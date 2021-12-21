@@ -1,0 +1,2 @@
+#!/bin/bash
+python3 ~/dgl/tools/launch.py --workspace ~/dgl/examples/pytorch/graphsage/experimental/ --num_trainers 1 --num_samplers 0 --num_servers 1 --num_omp_threads 40 --part_config ogbn-products-data/ogb-product.json --ip_config ip_config.txt "/home/gridsan/pmurzynowski/.conda/envs/philenv/bin/python train_dist.py --graph_name ogb-product --ip_config ip_config.txt --num_epochs 30 --batch_size 1000 --num_gpus 1"
