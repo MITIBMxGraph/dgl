@@ -23,8 +23,10 @@ from torch.utils.data import DataLoader
 
 def load_subtensor(g, seeds, input_nodes, device, load_feat=True):
     """
-    Copys features and labels of a set of nodes onto GPU.
+    Copies features and labels of a set of nodes onto GPU.
     """
+    import sys; print(f"In {sys._getframe().f_code.co_name}")
+    print(f"type(g.ndata['features'][input_nodes]): {type(g.ndata['features'][input_nodes])}")
     batch_inputs = g.ndata['features'][input_nodes].to(device) if load_feat else None
     batch_labels = g.ndata['labels'][seeds].to(device)
     return batch_inputs, batch_labels
@@ -172,7 +174,7 @@ def pad_data(nids):
     if max_num_nodes > nids_length:
         pad_size = max_num_nodes % nids_length
         repeat_size = max_num_nodes // nids_length
-        new_nids = th.cat([nids for _ in repeat_size] + [nids[:pad_size]], axis=0)
+        new_nids = th.cat([nids for _ in range(repeat_size)] + [nids[:pad_size]], axis=0)
         print("Pad nids from {} to {}".format(nids_length, max_num_nodes))
     else:
         new_nids = nids
@@ -329,8 +331,8 @@ if __name__ == '__main__':
                         help="the number of GPU device. Use -1 for CPU training")
     parser.add_argument('--num_epochs', type=int, default=20)
     parser.add_argument('--num_hidden', type=int, default=16)
-    parser.add_argument('--num_layers', type=int, default=2)
-    parser.add_argument('--fan_out', type=str, default='10,25')
+    parser.add_argument('--num_layers', type=int, default=3)
+    parser.add_argument('--fan_out', type=str, default='5,10,15')
     parser.add_argument('--batch_size', type=int, default=1000)
     parser.add_argument('--batch_size_eval', type=int, default=100000)
     parser.add_argument('--log_every', type=int, default=20)
