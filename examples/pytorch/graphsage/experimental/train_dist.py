@@ -21,12 +21,13 @@ import torch.optim as optim
 import torch.multiprocessing as mp
 from torch.utils.data import DataLoader
 
+import datetime
+#import torch.profiler as profiler
+
 def load_subtensor(g, seeds, input_nodes, device, load_feat=True):
     """
     Copies features and labels of a set of nodes onto GPU.
     """
-    import sys; print(f"In {sys._getframe().f_code.co_name}")
-    print(f"type(g.ndata['features'][input_nodes]): {type(g.ndata['features'][input_nodes])}")
     batch_inputs = g.ndata['features'][input_nodes].to(device) if load_feat else None
     batch_labels = g.ndata['labels'][seeds].to(device)
     return batch_inputs, batch_labels
@@ -267,18 +268,22 @@ def run(args, device, data):
                     g.rank(), epoch, step, loss.item(), acc.item(), np.mean(iter_tput[3:]), gpu_mem_alloc, np.sum(step_time[-args.log_every:])))
             start = time.time()
 
-        toc = time.time()
-        print('Part {}, Epoch Time(s): {:.4f}, sample+data_copy: {:.4f}, forward: {:.4f}, backward: {:.4f}, update: {:.4f}, #seeds: {}, #inputs: {}'.format(
-            g.rank(), toc - tic, sample_time, forward_time, backward_time, update_time, num_seeds, num_inputs))
-        epoch += 1
+            # pytorch profiler
+            # Need to call this at the end of each step to notify profiler of steps' boundary.
+            #prof.step()
+
+            toc = time.time()
+            print('Part {}, Epoch Time(s): {:.4f}, sample+data_copy: {:.4f}, forward: {:.4f}, backward: {:.4f}, update: {:.4f}, #seeds: {}, #inputs: {}'.format(
+                g.rank(), toc - tic, sample_time, forward_time, backward_time, update_time, num_seeds, num_inputs))
+            epoch += 1
 
 
-        if epoch % args.eval_every == 0 and epoch != 0:
-            start = time.time()
-            val_acc, test_acc = evaluate(model.module, g, g.ndata['features'],
-                                         g.ndata['labels'], val_nid, test_nid, args.batch_size_eval, device)
-            print('Part {}, Val Acc {:.4f}, Test Acc {:.4f}, time: {:.4f}'.format(g.rank(), val_acc, test_acc,
-                                                                                  time.time() - start))
+            if epoch % args.eval_every == 0 and epoch != 0:
+                start = time.time()
+                val_acc, test_acc = evaluate(model.module, g, g.ndata['features'],
+                                             g.ndata['labels'], val_nid, test_nid, args.batch_size_eval, device)
+                print('Part {}, Val Acc {:.4f}, Test Acc {:.4f}, time: {:.4f}'.format(g.rank(), val_acc, test_acc,
+                                                                                      time.time() - start))
 
 def main(args):
     dgl.distributed.initialize(args.ip_config)
@@ -315,6 +320,15 @@ def main(args):
     # Pack data
     in_feats = g.ndata['features'].shape[1]
     data = train_nid, val_nid, test_nid, in_feats, n_classes, g
+    # pytorch profiler
+    #with profiler.profile(
+    #    schedule=profiler.schedule(wait=1, warmup=1, active=3, repeat=2),
+    #    on_trace_ready=profiler.tensorboard_trace_handler('./log/'+datetimestr),
+    #    record_shapes=True,
+    #    profile_memory=False,
+    #    with_stack=True
+    #) as prof:
+    #    run(prof, args, device, data)
     run(args, device, data)
     print("parent ends")
 
@@ -344,4 +358,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     print(args)
+    #main(args)
+    #with profiler.profile(activities=[profiler.ProfilerActivity.CPU,profiler.ProfilerActivity.CUDA]) as prof:
+    #    main(args)
+    #print("Exporting trace.json")
+    #prof.export_chrome_trace("trace.json")
+    #print("Completed exporting trace.json")
+
+
+    datetimestr = datetime.datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
     main(args)
+
