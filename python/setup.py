@@ -105,7 +105,7 @@ def config_cython():
                 library_dirs=library_dirs,
                 libraries=libraries,
                 language="c++"))
-        return cythonize(ret, force=True)
+        return cythonize(ret, force=True, compiler_directives={'language_level' : "3"})
     except ImportError:
         print("WARNING: Cython is not installed, will compile without cython module")
         return []

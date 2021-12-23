@@ -138,6 +138,18 @@ examples/pytorch/generative_graph/*.p
 # data directory
 _download
 
+# more datasets
+examples/pytorch/graphsage/dataset/
+examples/pytorch/graphsage/experimental/dataset/
+examples/pytorch/graphsage/experimental/ogbn-papers-k2-data/
+examples/pytorch/graphsage/experimental/ogbn-products-k2-data/
+
+# logging
+examples/pytorch/graphsage/experimental/log/
+
+# metis intermediate files
+examples/pytorch/graphsage/experimental/metis*
+
 # CTags & CScope
 tags
 cscope.*
