@@ -168,7 +168,7 @@ def evaluate(model, g, inputs, labels, val_nid, test_nid, batch_size, device):
     model.train()
     return compute_acc(pred[val_nid], labels[val_nid]), compute_acc(pred[test_nid], labels[test_nid])
 
-def pad_data(nids, device):
+def pad_data(nids):
     """
     In distributed traning scenario, we need to make sure that each worker has same number of
     batches. Otherwise the synchronization(barrier) is called diffirent times, which results in
@@ -178,8 +178,7 @@ def pad_data(nids, device):
     the maximum size among all workers.
     """
     import torch.distributed as dist
-    # NCCL backend only supports GPU tensors, thus here we need to allocate it to gpu
-    num_nodes = th.tensor(nids.numel()).to(device)
+    num_nodes = th.tensor(nids.numel())
     dist.all_reduce(num_nodes, dist.ReduceOp.MAX)
     max_num_nodes = int(num_nodes)
     nids_length = nids.shape[0]
@@ -198,12 +197,7 @@ def pad_data(nids, device):
 def run(args, device, data):
     # Unpack data
     train_nid, val_nid, test_nid, in_feats, n_classes, g = data
-    shuffle = True
-    if args.pad_data:
-        train_nid = pad_data(train_nid, device)
-        # Current pipeline doesn't support duplicate node id within the same batch
-        # Therefore turn off shuffling to avoid potential duplicate node id within the same batch
-        shuffle = False
+    train_nid = pad_data(train_nid)
     # Create sampler
     sampler = NeighborSampler(g, [int(fanout) for fanout in args.fan_out.split(',')],
                               dgl.distributed.sample_neighbors, device)
@@ -213,7 +207,7 @@ def run(args, device, data):
         dataset=train_nid.numpy(),
         batch_size=args.batch_size,
         collate_fn=sampler.sample_blocks,
-        shuffle=shuffle,
+        shuffle=True,
         drop_last=False)
 
     # Define model and optimizer
@@ -292,10 +286,10 @@ def run(args, device, data):
                     # Need to call this at the end of each step to notify profiler of steps' boundary.
                     #prof.step()
 
-                toc = time.time()
-                print('Part {}, Epoch Time(s): {:.4f}, sample+data_copy: {:.4f}, forward: {:.4f}, backward: {:.4f}, update: {:.4f}, #seeds: {}, #inputs: {}'.format(
-                    g.rank(), toc - tic, sample_time, forward_time, backward_time, update_time, num_seeds, num_inputs))
-                epoch += 1
+            toc = time.time()
+            print('Part {}, Epoch Time(s): {:.4f}, sample+data_copy: {:.4f}, forward: {:.4f}, backward: {:.4f}, update: {:.4f}, #seeds: {}, #inputs: {}'.format(
+                g.rank(), toc - tic, sample_time, forward_time, backward_time, update_time, num_seeds, num_inputs))
+            epoch += 1
 
 
             if epoch % args.eval_every == 0 and epoch != 0:
@@ -304,13 +298,13 @@ def run(args, device, data):
                                              g.ndata['labels'], val_nid, test_nid, args.batch_size_eval, device)
                 print('Part {}, Val Acc {:.4f}, Test Acc {:.4f}, time: {:.4f}'.format(g.rank(), val_acc, test_acc,
                                                                                       time.time() - start))
-#profiler.stop()
+    #profiler.stop()
 
 @record
 def main(args):
     dgl.distributed.initialize(args.ip_config)
     if not args.standalone:
-        th.distributed.init_process_group(backend=args.backend)
+        th.distributed.init_process_group(backend='gloo')
     g = dgl.distributed.DistGraph(args.graph_name, part_config=args.part_config)
     print('rank:', g.rank())
 
@@ -363,7 +357,6 @@ if __name__ == '__main__':
     parser.add_argument('--part_config', type=str, help='The path to the partition config file')
     parser.add_argument('--num_clients', type=int, help='The number of clients')
     parser.add_argument('--n_classes', type=int, help='the number of classes')
-    parser.add_argument('--backend', type=str, default='gloo', help='pytorch distributed backend')
     parser.add_argument('--num_gpus', type=int, default=-1,
                         help="the number of GPU device. Use -1 for CPU training")
     parser.add_argument('--num_epochs', type=int, default=20)
@@ -378,8 +371,6 @@ if __name__ == '__main__':
     parser.add_argument('--dropout', type=float, default=0.5)
     parser.add_argument('--local_rank', type=int, help='get rank of the process')
     parser.add_argument('--standalone', action='store_true', help='run in the standalone mode')
-    parser.add_argument('--pad-data', default=False, action='store_true',
-                        help='Pad train nid to the same length across machine, to ensure num of batches to be the same.')
     args = parser.parse_args()
 
     print(args)
