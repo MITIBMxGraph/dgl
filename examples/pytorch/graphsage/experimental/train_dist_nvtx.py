@@ -286,10 +286,10 @@ def run(args, device, data):
                     # Need to call this at the end of each step to notify profiler of steps' boundary.
                     #prof.step()
 
-                toc = time.time()
-                print('Part {}, Epoch Time(s): {:.4f}, sample+data_copy: {:.4f}, forward: {:.4f}, backward: {:.4f}, update: {:.4f}, #seeds: {}, #inputs: {}'.format(
-                    g.rank(), toc - tic, sample_time, forward_time, backward_time, update_time, num_seeds, num_inputs))
-                epoch += 1
+            toc = time.time()
+            print('Part {}, Epoch Time(s): {:.4f}, sample+data_copy: {:.4f}, forward: {:.4f}, backward: {:.4f}, update: {:.4f}, #seeds: {}, #inputs: {}'.format(
+                g.rank(), toc - tic, sample_time, forward_time, backward_time, update_time, num_seeds, num_inputs))
+            epoch += 1
 
 
             if epoch % args.eval_every == 0 and epoch != 0:
@@ -298,7 +298,7 @@ def run(args, device, data):
                                              g.ndata['labels'], val_nid, test_nid, args.batch_size_eval, device)
                 print('Part {}, Val Acc {:.4f}, Test Acc {:.4f}, time: {:.4f}'.format(g.rank(), val_acc, test_acc,
                                                                                       time.time() - start))
-#profiler.stop()
+    #profiler.stop()
 
 @record
 def main(args):
