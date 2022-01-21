@@ -11,6 +11,9 @@ from .. import backend as F
 from .. import utils
 from .._ffi.ndarray import empty_shared_mem
 
+# profiling
+import nvtx
+
 ############################ Register KVStore Requsts and Responses ###############################
 
 KVSTORE_PULL = 901231
@@ -55,6 +58,7 @@ class PullRequest(rpc.Request):
     def __setstate__(self, state):
         self.name, self.id_tensor = state
 
+    @nvtx.annotate('kvstore PullRequest.process_request')
     def process_request(self, server_state):
         kv_store = server_state.kv_store
         if self.name not in kv_store.part_policy:
@@ -1268,6 +1272,7 @@ class KVClient(object):
         if local_id is not None: # local push
             self._push_handlers[name](self._data_store, name, local_id, local_data)
 
+    @nvtx.annotate("kvstore pull", color='orange')
     def pull(self, name, id_tensor):
         """Pull message from KVServer.
 
@@ -1288,7 +1293,6 @@ class KVClient(object):
         id_tensor = id_tensor.tousertensor()
         assert F.ndim(id_tensor) == 1, 'ID must be a vector.'
         if self._pull_handlers[name] is default_pull_handler: # Use fast-pull
-            print("*************\n*************\nDOING FAST PULL\n*************\n*************")
             part_id = self._part_policy[name].to_partid(id_tensor)
             return rpc.fast_pull(name, id_tensor, part_id, KVSTORE_PULL,
                                  self._machine_count,

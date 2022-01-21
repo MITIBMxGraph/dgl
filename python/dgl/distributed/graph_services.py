@@ -12,6 +12,9 @@ from ..base import NID, EID
 from ..utils import toindex
 from .. import backend as F
 
+# profiling
+import nvtx
+
 __all__ = ['sample_neighbors', 'in_subgraph', 'find_edges']
 
 SAMPLING_SERVICE_ID = 6657
@@ -57,16 +60,19 @@ def _sample_neighbors(local_g, partition_book, seed_nodes, fan_out, edge_dir, pr
     The sampled results are stored in three vectors that store source nodes, destination nodes
     and edge IDs.
     """
-    local_ids = partition_book.nid2localnid(seed_nodes, partition_book.partid)
+    with nvtx.annotate('parition_book.nid2localnid'):
+        local_ids = partition_book.nid2localnid(seed_nodes, partition_book.partid)
     local_ids = F.astype(local_ids, local_g.idtype)
     # local_ids = self.seed_nodes
     sampled_graph = local_sample_neighbors(
         local_g, local_ids, fan_out, edge_dir, prob, replace, _dist_training=True)
     global_nid_mapping = local_g.ndata[NID]
-    src, dst = sampled_graph.edges()
-    global_src, global_dst = F.gather_row(global_nid_mapping, src), \
-            F.gather_row(global_nid_mapping, dst)
-    global_eids = F.gather_row(local_g.edata[EID], sampled_graph.edata[EID])
+    with nvtx.annotate('collect edges'):
+        src, dst = sampled_graph.edges()
+    with nvtx.annotate('gather_row calls'):
+        global_src, global_dst = F.gather_row(global_nid_mapping, src), \
+                F.gather_row(global_nid_mapping, dst)
+        global_eids = F.gather_row(local_g.edata[EID], sampled_graph.edata[EID])
     return global_src, global_dst, global_eids
 
 def _sample_etype_neighbors(local_g, partition_book, seed_nodes, etype_field,
@@ -155,6 +161,7 @@ class SamplingRequest(Request):
     def __getstate__(self):
         return self.seed_nodes, self.edge_dir, self.prob, self.replace, self.fan_out
 
+    @nvtx.annotate('SamplingRequest.process_request')
     def process_request(self, server_state):
         local_g = server_state.graph
         partition_book = server_state.partition_book
@@ -325,6 +332,7 @@ def merge_graphs(res_list, num_nodes):
 
 LocalSampledGraph = namedtuple('LocalSampledGraph', 'global_src global_dst global_eids')
 
+@nvtx.annotate('_distributed_access', color='red')
 def _distributed_access(g, nodes, issue_remote_req, local_access):
     '''A routine that fetches local neighborhood of nodes from the distributed graph.
 
@@ -351,40 +359,47 @@ def _distributed_access(g, nodes, issue_remote_req, local_access):
         The subgraph that contains the neighborhoods of all input nodes.
     '''
     req_list = []
-    partition_book = g.get_partition_book()
-    nodes = toindex(nodes).tousertensor()
-    partition_id = partition_book.nid2partid(nodes)
+    with nvtx.annotate('get_partition_book & nid2partid', color='red'):
+        partition_book = g.get_partition_book()
+        nodes = toindex(nodes).tousertensor()
+        partition_id = partition_book.nid2partid(nodes)
     local_nids = None
-    for pid in range(partition_book.num_partitions()):
-        node_id = F.boolean_mask(nodes, partition_id == pid)
-        # We optimize the sampling on a local partition if the server and the client
-        # run on the same machine. With a good partitioning, most of the seed nodes
-        # should reside in the local partition. If the server and the client
-        # are not co-located, the client doesn't have a local partition.
-        if pid == partition_book.partid and g.local_partition is not None:
-            assert local_nids is None
-            local_nids = node_id
-        elif len(node_id) != 0:
-            req = issue_remote_req(node_id)
-            req_list.append((pid, req))
+    with nvtx.annotate('iter through parts & create request(s)', color='red'):
+        for pid in range(partition_book.num_partitions()):
+            node_id = F.boolean_mask(nodes, partition_id == pid)
+            # We optimize the sampling on a local partition if the server and the client
+            # run on the same machine. With a good partitioning, most of the seed nodes
+            # should reside in the local partition. If the server and the client
+            # are not co-located, the client doesn't have a local partition.
+            if pid == partition_book.partid and g.local_partition is not None:
+                assert local_nids is None
+                local_nids = node_id
+            elif len(node_id) != 0:
+                req = issue_remote_req(node_id)
+                req_list.append((pid, req))
 
     # send requests to the remote machine.
-    msgseq2pos = None
-    if len(req_list) > 0:
-        msgseq2pos = send_requests_to_machine(req_list)
+    with nvtx.annotate('send reqests', color='red'):
+        msgseq2pos = None
+        if len(req_list) > 0:
+            msgseq2pos = send_requests_to_machine(req_list)
 
     # sample neighbors for the nodes in the local partition.
-    res_list = []
-    if local_nids is not None:
-        src, dst, eids = local_access(g.local_partition, partition_book, local_nids)
-        res_list.append(LocalSampledGraph(src, dst, eids))
+    with nvtx.annotate('local sampling'):
+        res_list = []
+        if local_nids is not None:
+            src, dst, eids = local_access(g.local_partition, partition_book, local_nids)
+            with nvtx.annotate('create namedtuple LocalSampledGraph'):
+                res_list.append(LocalSampledGraph(src, dst, eids))
 
     # receive responses from remote machines.
-    if msgseq2pos is not None:
-        results = recv_responses(msgseq2pos)
-        res_list.extend(results)
+    with nvtx.annotate('recv_responses', color='red'):
+        if msgseq2pos is not None:
+            results = recv_responses(msgseq2pos)
+            res_list.extend(results)
 
-    sampled_graph = merge_graphs(res_list, g.number_of_nodes())
+    with nvtx.annotate('merge_graphs', color='red'):
+        sampled_graph = merge_graphs(res_list, g.number_of_nodes())
     return sampled_graph
 
 def _frontier_to_heterogeneous_graph(g, frontier, gpb):
@@ -509,6 +524,7 @@ def sample_etype_neighbors(g, nodes, etype_field, fanout, edge_dir='in', prob=No
     else:
         return frontier
 
+@nvtx.annotate('sample_neighbors', color='red')
 def sample_neighbors(g, nodes, fanout, edge_dir='in', prob=None, replace=False):
     """Sample from the neighbors of the given nodes from a distributed graph.
 
@@ -558,7 +574,8 @@ def sample_neighbors(g, nodes, fanout, edge_dir='in', prob=None, replace=False):
     DGLGraph
         A sampled subgraph containing only the sampled neighboring edges.  It is on CPU.
     """
-    gpb = g.get_partition_book()
+    with nvtx.annotate('get_partition_book'):
+        gpb = g.get_partition_book()
     if len(gpb.etypes) > 1:
         assert isinstance(nodes, dict)
         homo_nids = []

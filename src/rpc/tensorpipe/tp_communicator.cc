@@ -15,16 +15,21 @@
 
 #include "../rpc.h"
 
+// nvtx profiling handled in queue.h
+
 namespace dgl {
 namespace rpc {
 
 using namespace tensorpipe;
 
 void TPSender::AddReceiver(const std::string& addr, int recv_id) {
+  nvtxRangePushA("TPSender::AddReceiver");
   receiver_addrs_[recv_id] = addr;
+  nvtxRangePop();
 }
 
 bool TPSender::Connect() {
+  nvtxRangePushA("TPSender::Connect");
   for (const auto& kv : receiver_addrs_) {
     std::shared_ptr<Pipe> pipe;
     for (;;) {
@@ -49,10 +54,12 @@ bool TPSender::Connect() {
     }
     pipes_[kv.first] = pipe;
   }
+  nvtxRangePop();
   return true;
 }
 
 void TPSender::Send(const RPCMessage& msg, int recv_id) {
+  nvtxRangePushA("TPSender::Send");
   auto pipe = pipes_[recv_id];
   tensorpipe::Message tp_msg;
   std::string* zerocopy_blob_ptr = &tp_msg.metadata;
@@ -84,12 +91,14 @@ void TPSender::Send(const RPCMessage& msg, int recv_id) {
                              << ". Details: " << error.what();
                 }
               });
+  nvtxRangePop();
 }
 
 void TPSender::Finalize() {}
 void TPReceiver::Finalize() {}
 
 bool TPReceiver::Wait(const std::string& addr, int num_sender) {
+  PUSH_RANGE("TPReceiver::Wait", 1)
   listener = context->listen({addr});
   for (int i = 0; i < num_sender; i++) {
     std::promise<std::shared_ptr<Pipe>> pipeProm;
@@ -111,11 +120,13 @@ bool TPReceiver::Wait(const std::string& addr, int num_sender) {
     pipes_[i] = pipe;
     ReceiveFromPipe(pipe, queue_);
   }
+  POP_RANGE
   return true;
 }
 
 void TPReceiver::ReceiveFromPipe(std::shared_ptr<Pipe> pipe,
                                  std::shared_ptr<RPCMessageQueue> queue) {
+  PUSH_RANGE("TPReceiver::ReceiveFromPipe", 1)
   pipe->readDescriptor([pipe, queue = std::move(queue)](const Error& error,
                                                         Descriptor descriptor) {
     if (error) {
@@ -160,9 +171,14 @@ void TPReceiver::ReceiveFromPipe(std::shared_ptr<Pipe> pipe,
         TPReceiver::ReceiveFromPipe(pipe, queue);
       });
   });
+  POP_RANGE
 }
 
-void TPReceiver::Recv(RPCMessage* msg) { *msg = std::move(queue_->pop()); }
+void TPReceiver::Recv(RPCMessage* msg) {
+  PUSH_RANGE("TPReceiver::Recv", 1);
+  *msg = std::move(queue_->pop());
+  POP_RANGE
+}
 
 }  // namespace rpc
 }  // namespace dgl

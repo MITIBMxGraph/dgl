@@ -5,6 +5,9 @@ import time
 from . import rpc
 from .constants import MAX_QUEUE_SIZE
 
+# profiling
+import nvtx
+
 def start_server(server_id, ip_config, num_servers, num_clients, server_state, \
     max_queue_size=MAX_QUEUE_SIZE, net_type='socket'):
     """Start DGL server, which will be shared with all the rpc services.
@@ -87,15 +90,21 @@ def start_server(server_id, ip_config, num_servers, num_clients, server_state, \
             register_res = rpc.ClientRegisterResponse(client_id)
             rpc.send_response(client_id, register_res)
     # main service loop
-    while True:
-        req, client_id = rpc.recv_request()
-        res = req.process_request(server_state)
-        if res is not None:
-            if isinstance(res, list):
-                for response in res:
-                    target_id, res_data = response
-                    rpc.send_response(target_id, res_data)
-            elif isinstance(res, str) and res == 'exit':
-                break # break the loop and exit server
-            else:
-                rpc.send_response(client_id, res)
+    with nvtx.annotate("server main service loop"):
+        while True:
+            with nvtx.annotate("rpc recv_request"):
+                req, client_id = rpc.recv_request()
+            with nvtx.annotate("process_request"):
+                res = req.process_request(server_state)
+            if res is not None:
+                if isinstance(res, list):
+                    with nvtx.annotate("send response list"):
+                        for response in res:
+                            target_id, res_data = response
+                            with nvtx.annotate("rpc send_response"):
+                                rpc.send_response(target_id, res_data)
+                elif isinstance(res, str) and res == 'exit':
+                    break # break the loop and exit server
+                else:
+                    with nvtx.annotate("rpc send_response"):
+                        rpc.send_response(client_id, res)

@@ -11,6 +11,9 @@ from .._ffi.function import _init_api
 from ..base import DGLError
 from .. import backend as F
 
+# profiling
+import nvtx
+
 __all__ = ['set_rank', 'get_rank', 'Request', 'Response', 'register_service', \
 'create_sender', 'create_receiver', 'finalize_sender', 'finalize_receiver', \
 'receiver_wait', 'add_receiver_addr', 'sender_connect', 'read_ip_config', \

@@ -27,7 +27,6 @@ import torch.cuda.profiler as profiler
 import nvtx
 from torch.distributed.elastic.multiprocessing.errors import record
 
-@nvtx.annotate("load subtensor")
 def load_subtensor(g, seeds, input_nodes, device, load_feat=True):
     """
     Copies features and labels of a set of nodes onto GPU.
@@ -48,12 +47,13 @@ class NeighborSampler(object):
     def sample_blocks(self, seeds):
         seeds = th.LongTensor(np.asarray(seeds))
         blocks = []
-        with nvtx.annotate("sampling"):
+        with nvtx.annotate("sampling", color='red'):
             for fanout in self.fanouts:
                 # For each seed node, sample ``fanout`` neighbors.
                 frontier = self.sample_neighbors(self.g, seeds, fanout, replace=True)
                 # Then we compact the frontier into a bipartite graph for message passing.
-                block = dgl.to_block(frontier, seeds)
+                with nvtx.annotate('to MFG', color='cyan'):
+                    block = dgl.to_block(frontier, seeds)
                 # Obtain the seed nodes for next layer.
                 seeds = block.srcdata[dgl.NID]
 
@@ -61,7 +61,7 @@ class NeighborSampler(object):
 
         input_nodes = blocks[0].srcdata[dgl.NID]
         seeds = blocks[-1].dstdata[dgl.NID]
-        with nvtx.annotate("slicing"):
+        with nvtx.annotate("slicing", color='orange'):
             batch_inputs, batch_labels = load_subtensor(self.g, seeds, input_nodes, "cpu", self.load_feat)
         if self.load_feat:
             blocks[0].srcdata['features'] = batch_inputs
@@ -193,7 +193,6 @@ def pad_data(nids):
     return new_nids
 
 
-@nvtx.annotate("run")
 def run(args, device, data):
     # Unpack data
     train_nid, val_nid, test_nid, in_feats, n_classes, g = data
@@ -243,8 +242,17 @@ def run(args, device, data):
             # Loop over the dataloader to sample the computation dependency graph as a list of
             # blocks.
             step_time = []
-            for step, blocks in enumerate(dataloader):
+            #for step, blocks in enumerate(dataloader):
+            step = 0
+
+            while True:
                 with nvtx.annotate("iteration"):
+
+                    try:
+                        blocks = next(dataloader)
+                    except StopIteration:
+                        break
+
                     tic_step = time.time()
                     sample_time += tic_step - start
 
@@ -256,35 +264,45 @@ def run(args, device, data):
 
                     num_seeds += len(blocks[-1].dstdata[dgl.NID])
                     num_inputs += len(blocks[0].srcdata[dgl.NID])
-                    blocks = [block.to(device) for block in blocks]
-                    batch_labels = batch_labels.to(device)
+                    with nvtx.annotate('to GPU', color='yellow'):
+                        blocks = [block.to(device) for block in blocks]
+                        batch_labels = batch_labels.to(device)
                     # Compute loss and prediction
                     start = time.time()
-                    batch_pred = model(blocks, batch_inputs)
-                    loss = loss_fcn(batch_pred, batch_labels)
+                    with nvtx.annotate('model'):
+                        batch_pred = model(blocks, batch_inputs)
+                    with nvtx.annotate('loss'):
+                        loss = loss_fcn(batch_pred, batch_labels)
                     forward_end = time.time()
-                    optimizer.zero_grad()
-                    loss.backward()
+                    with nvtx.annotate('zero_grad'):
+                        optimizer.zero_grad()
+                    with nvtx.annotate('backward'):
+                        with th.autograd.profiler.emit_nvtx():
+                            loss.backward()
                     compute_end = time.time()
                     forward_time += forward_end - start
                     backward_time += compute_end - forward_end
 
-                    optimizer.step()
+                    with nvtx.annotate('step', color='purple'):
+                        optimizer.step()
                     update_time += time.time() - compute_end
 
                     step_t = time.time() - tic_step
                     step_time.append(step_t)
                     iter_tput.append(len(blocks[-1].dstdata[dgl.NID]) / step_t)
                     if step % args.log_every == 0:
-                        acc = compute_acc(batch_pred, batch_labels)
-                        gpu_mem_alloc = th.cuda.max_memory_allocated() / 1000000 if th.cuda.is_available() else 0
-                        print('Part {} | Epoch {:05d} | Step {:05d} | Loss {:.4f} | Train Acc {:.4f} | Speed (samples/sec) {:.4f} | GPU {:.1f} MB | time {:.3f} s'.format(
-                            g.rank(), epoch, step, loss.item(), acc.item(), np.mean(iter_tput[3:]), gpu_mem_alloc, np.sum(step_time[-args.log_every:])))
+                        with nvtx.annotate('logging'):
+                            acc = compute_acc(batch_pred, batch_labels)
+                            gpu_mem_alloc = th.cuda.max_memory_allocated() / 1000000 if th.cuda.is_available() else 0
+                            print('Part {} | Epoch {:05d} | Step {:05d} | Loss {:.4f} | Train Acc {:.4f} | Speed (samples/sec) {:.4f} | GPU {:.1f} MB | time {:.3f} s'.format(
+                                g.rank(), epoch, step, loss.item(), acc.item(), np.mean(iter_tput[3:]), gpu_mem_alloc, np.sum(step_time[-args.log_every:])))
                     start = time.time()
 
                     # pytorch profiler
                     # Need to call this at the end of each step to notify profiler of steps' boundary.
                     #prof.step()
+
+                    step += 1
 
             toc = time.time()
             print('Part {}, Epoch Time(s): {:.4f}, sample+data_copy: {:.4f}, forward: {:.4f}, backward: {:.4f}, update: {:.4f}, #seeds: {}, #inputs: {}'.format(
@@ -294,6 +312,8 @@ def run(args, device, data):
 
             if epoch % args.eval_every == 0 and epoch != 0:
                 start = time.time()
+                # with nvtx.annotate('evaluate'):
+                # evaluate function is nvtx annotated
                 val_acc, test_acc = evaluate(model.module, g, g.ndata['features'],
                                              g.ndata['labels'], val_nid, test_nid, args.batch_size_eval, device)
                 print('Part {}, Val Acc {:.4f}, Test Acc {:.4f}, time: {:.4f}'.format(g.rank(), val_acc, test_acc,
@@ -302,10 +322,12 @@ def run(args, device, data):
 
 @record
 def main(args):
-    dgl.distributed.initialize(args.ip_config)
-    if not args.standalone:
-        th.distributed.init_process_group(backend='gloo')
-    g = dgl.distributed.DistGraph(args.graph_name, part_config=args.part_config)
+    with nvtx.annotate("initialize and init_process_group"):
+        dgl.distributed.initialize(args.ip_config)
+        if not args.standalone:
+            th.distributed.init_process_group(backend='gloo')
+    with nvtx.annotate("begin loading graph"):
+        g = dgl.distributed.DistGraph(args.graph_name, part_config=args.part_config)
     print('rank:', g.rank())
 
     pb = g.get_partition_book()
