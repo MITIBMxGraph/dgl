@@ -8,6 +8,9 @@ from .. import ndarray as nd
 from .. import utils
 from .utils import EidExcluder
 
+# profiling
+import nvtx
+
 __all__ = [
     'sample_etype_neighbors',
     'sample_neighbors',
@@ -149,6 +152,7 @@ def sample_etype_neighbors(g, nodes, etype_field, fanout, edge_dir='in', prob=No
 
 DGLHeteroGraph.sample_etype_neighbors = utils.alias_func(sample_etype_neighbors)
 
+@nvtx.annotate('dgl.sampling.sample_neighbors', color='red')
 def sample_neighbors(g, nodes, fanout, edge_dir='in', prob=None, replace=False,
                      copy_ndata=True, copy_edata=True, _dist_training=False,
                      exclude_edges=None, output_device=None):

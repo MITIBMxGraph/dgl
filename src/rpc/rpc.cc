@@ -21,6 +21,8 @@
 #include "../c_api_common.h"
 #include "../runtime/resource_manager.h"
 
+// nvtx profiling handled in queue.h
+
 using dgl::network::StringPrintf;
 using namespace dgl::runtime;
 
@@ -385,6 +387,7 @@ DGL_REGISTER_GLOBAL("distributed.server_state._CAPI_DGLRPCGetServerState")
 
 DGL_REGISTER_GLOBAL("distributed.rpc._CAPI_DGLRPCGetGlobalIDFromLocalPartition")
 .set_body([](DGLArgs args, DGLRetValue* rv) {
+  PUSH_RANGE("CAPI_DLGRPCGetGlobalIDFromLocalPartition", 14);
   NDArray ID = args[0];
   NDArray part_id = args[1];
   int local_machine_id = args[2];
@@ -399,10 +402,15 @@ DGL_REGISTER_GLOBAL("distributed.rpc._CAPI_DGLRPCGetGlobalIDFromLocalPartition")
   }
   NDArray res_tensor = dgl::aten::VecToIdArray<int64_t>(global_id);
   *rv = res_tensor;
+  POP_RANGE
 });
 
 DGL_REGISTER_GLOBAL("distributed.rpc._CAPI_DGLRPCFastPull")
 .set_body([](DGLArgs args, DGLRetValue* rv) {
+
+  // annotatex with nvtx
+  nvtxRangePushA("CAPI_DGLRPCFastPull");
+
   // Input
   std::string name = args[0];
   int local_machine_id = args[1];
@@ -457,6 +465,8 @@ DGL_REGISTER_GLOBAL("distributed.rpc._CAPI_DGLRPCFastPull")
       remote_ids_original[p_id].push_back(i);
     }
   }
+
+  nvtxRangePushA("request remote features, grouped by partition");
   // Send remote id
   int msg_count = 0;
   for (int i = 0; i < remote_ids.size(); ++i) {
@@ -476,6 +486,9 @@ DGL_REGISTER_GLOBAL("distributed.rpc._CAPI_DGLRPCFastPull")
       msg_count++;
     }
   }
+  nvtxRangePop();
+
+  nvtxRangePushA("slice local features");
   local_data_shape[0] = ID_size;
   NDArray res_tensor = NDArray::Empty(local_data_shape,
                                       local_data->dtype,
@@ -492,10 +505,16 @@ DGL_REGISTER_GLOBAL("distributed.rpc._CAPI_DGLRPCFastPull")
              local_data_char + local_ids[i] * row_size, row_size);
     }
   });
+  nvtxRangePop();
+
+  nvtxRangePushA("recv & slice remote features, grouped by partition");
   // Recv remote message
   for (int i = 0; i < msg_count; ++i) {
+    nvtxRangePushA("Recv remote features");
     RPCMessage msg;
     RecvRPCMessage(&msg, 0);
+    nvtxRangePop();
+    nvtxRangePushA("Slice remote feature");
     int part_id = msg.server_id / group_count;
     char* data_char = static_cast<char*>(msg.tensors[0]->data);
     dgl_id_t id_size = remote_ids[part_id].size();
@@ -503,8 +522,12 @@ DGL_REGISTER_GLOBAL("distributed.rpc._CAPI_DGLRPCFastPull")
       memcpy(return_data + remote_ids_original[part_id][n] * row_size,
              data_char + n * row_size, row_size);
     }
+    nvtxRangePop();
   }
   *rv = res_tensor;
+  nvtxRangePop();
+
+  nvtxRangePop();
 });
 
 DGL_REGISTER_GLOBAL("distributed.rpc._CAPI_DGLRPCGetGroupID")

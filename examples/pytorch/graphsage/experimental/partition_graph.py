@@ -25,6 +25,8 @@ if __name__ == '__main__':
                                 in the node feature \'trainer_id\'')
     argparser.add_argument('--output', type=str, default='data',
                            help='Output path of partitioned graph.')
+    argparser.add_argument('--num_hops', type=str, default=1,
+                           help='Size of halo for partitioned graph structure. Default 1 following function definition default.')
     args = argparser.parse_args()
 
     start = time.time()
@@ -51,6 +53,7 @@ if __name__ == '__main__':
         g = sym_g
 
     dgl.distributed.partition_graph(g, args.dataset, args.num_parts, args.output,
+                                    num_hops=args.num_hops,
                                     part_method=args.part_method,
                                     balance_ntypes=balance_ntypes,
                                     balance_edges=args.balance_edges,

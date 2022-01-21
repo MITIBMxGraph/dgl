@@ -32,6 +32,9 @@ from .graph_services import out_degrees as dist_out_degrees
 from .graph_services import in_degrees as dist_in_degrees
 from .dist_tensor import DistTensor
 
+# profiling
+import nvtx
+
 INIT_GRAPH = 800001
 
 class InitGraphRequest(rpc.Request):
@@ -312,6 +315,7 @@ class DistGraphServer(KVServer):
     keep_alive : bool
         Whether to keep server alive when clients exit
     '''
+    @nvtx.annotate("init DistGraphServer")
     def __init__(self, server_id, ip_config, num_servers,
                  num_clients, part_config, disable_shared_mem=False,
                  graph_format=('csc', 'coo'), keep_alive=False):
