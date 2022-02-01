@@ -32,30 +32,15 @@ def Adj__from_fast_sampler(adj) -> Adj:
 
 def Block__from_fast_sampler(adj) -> DGLBlock:
     rowptr, col, edge_ids, sparse_sizes = adj
-    print(rowptr.numel())
-    print(col.numel())
-    adjadj =  Adj(
-        SparseTensor(rowptr=rowptr, row=None, col=col, value=None,
-                     sparse_sizes=sparse_sizes, is_sorted=True, trust_data=True),
-        edge_ids,
-        sparse_sizes[::-1]
-    )
-    rowptr2, col2, edge_ids2 = adjadj.adj_t.csr()
-    print('2')
-    print(rowptr2.numel())
-    print(col2.numel())
     # for dgl no longer need to create Adj and SparseTensor
-    with nvtx.annotate('adj loop iteration'):
+    with nvtx.annotate('adj to Block MFG conversion'):
         #with nvtx.annotate('adj extract csr'):
         #    rowptr, col, edge_ids = adj.adj_t.csr()
         edge_ids = torch.empty(0) if edge_ids is None else edge_ids
-        edge_ids2 = torch.empty(0) if edge_ids2 is None else edge_ids2
         with nvtx.annotate('create_block from csr'):
-            block = dgl.create_block(('csr', (rowptr2, col2, edge_ids2)),
-                                     #num_src_nodes=sparse_sizes[1],
-                                     #num_dst_nodes=sparse_sizes[0])
-                                     num_src_nodes=adjadj.size[1],
-                                     num_dst_nodes=adjadj.size[0])
+            block = dgl.create_block(('csr', (rowptr, col, edge_ids)),
+                                     num_src_nodes=sparse_sizes[0],
+                                     num_dst_nodes=sparse_sizes[1])
         with nvtx.annotate('_node_frames _ID torch.arange()'):
             block._node_frames[0]['_ID'] = torch.arange(block.number_of_src_nodes())
             block._node_frames[1]['_ID'] = torch.arange(block.number_of_dst_nodes())
@@ -115,7 +100,7 @@ class PreparedBatch(NamedTuple):
         # record stream for DGLBlock
         """
         for block in self.blocks:
-            block.record_stream(stream)
+            block.int().record_stream(stream)
         """
 
     def to(self, device, non_blocking=False):
@@ -124,7 +109,7 @@ class PreparedBatch(NamedTuple):
                 device=device, non_blocking=non_blocking) if self.x is not None else None,
             y=self.y.to(
                 device=device, non_blocking=non_blocking) if self.y is not None else None,
-            blocks=[block.to(device=device, non_blocking=non_blocking)
+            blocks=[block.int().to(device=device, non_blocking=non_blocking)
                   for block in self.blocks],
             idx_range=self.idx_range
         )
