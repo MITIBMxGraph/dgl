@@ -59,51 +59,9 @@ def run(args, device, data):
     dgl__fanout = [int(f) for f in args.fan_out.split(',')]
     salient__fanout = list(reversed(dgl__fanout))
 
-    # Create DGL DataLoader (similar to pytorch) for constructing blocks
-    """
-    dataloader_device = th.device('cpu')
-    dgl__sampler = dgl.dataloading.MultiLayerNeighborSampler(fanout)
-    dgl__dataloader = dgl.dataloading.NodeDataLoader(
-         train_g,
-         train_nid,
-         dgl__sampler,
-         device=dataloader_device,
-         batch_size=args.batch_size,
-         shuffle=False,                  # disabled for comparison purposes only
-         drop_last=False,
-         num_workers=args.num_workers)
-    """
-
     #convert graph to input to format that can be fed into Salient
     with nvtx.annotate('convert DGLGraph to CSR for Salient'):
         rowptr, col, edge_ids = g.adj_sparse('csr')
-    """
-    print('Checking if all nodes have neighbors')
-    for i in range(len(rowptr)-1):
-        if (rowptr[i] == rowptr[i+1]):
-            print(f'{i} has no neighbors')
-    coo_row, coo_col = g.adj_sparse('coo')
-    print(len(coo_row))
-    print(len(coo_col))
-    print('catting')
-    cat = torch.cat((coo_row, coo_col))
-    print('unique')
-    print(len(torch.unique(cat)))
-    """
-
-    # using torch sparse
-    #import torch_sparse
-    #pre_row, pre_col = g.adj_sparse('coo') num_nodes = x.size(0)
-    #adj_t = SparseTensor(row=pre_row, col=pre_col, value=None,
-    #                     sparse_sizes=(num_nodes, num_nodes)).t()
-    #rowptr, col, _ = adj_t.to_symmetric().csr()
-
-
-    # create Salient dataloader
-    #print('tensor types')
-    #print(x.type())
-    #print(x.__dict__)
-    #print(y.type())
     cfg = FastSamplerConfig(
                 # ignore features and labels temporarily
                 #x=dataset.x, y=dataset.y.unsqueeze(-1),
@@ -117,6 +75,7 @@ def run(args, device, data):
             )
 
     train_loader = FastSampler(40, 50, cfg)
+    #train_loader = FastSampler(2, 50, cfg)
     #train_loader = FastSampler(1, 50, cfg) # serial to debug
 
     # Define model and optimizer
@@ -132,9 +91,6 @@ def run(args, device, data):
             tic = time.time()
             tic_step = time.time()
 
-            # Loop over the dataloader to sample the computation dependency graph as a list of
-            # blocks.
-            #dgl__dataloader_iter = iter(dgl__dataloader)
             train_loader_iter = iter(train_loader)
             salient__dataloader = DevicePrefetcher([device], train_loader_iter)
             step = -1
@@ -145,144 +101,9 @@ def run(args, device, data):
                     step += 1
                     #print(step)
 
-                    """
-                    # load DGL prepared batch
-                    try:
-                       dgl__input_nodes, dgl__seeds, dgl__blocks = next(dgl__dataloader_iter)
-                    except StopIteration:
-                        # make sure DGL Dataloader and Salient complete simultaneously
-                        inputs = next(salient__dataloader, [])
-                        assert len(inputs) == 0
-                        break
-
-                    """
-                    # load Salient prepared batch
                     inputs = next(salient__dataloader, [])
-                    #assert len(inputs) != 0:
                     if len(inputs) == 0:
                         break
-                    """
-
-                    # add some more assertions on types returned by different dataloaders
-                    #print(step)
-                    #print(f'type dgl rv: {type(blocks)}')
-                    #print(f'type sal rv: {type(inputs)}')
-                    #print('blocks')
-                    #print(blocks)
-                    #print('inputs')
-                    #print(inputs)
-                    #print()
-                    """
-
-                    # inspect returned adj
-                    # print(batch.adjs)
-                    #print('loop over batch.adjs')
-                    #for adj in batch.adjs:
-                    #    print(adj.adj_t.csr())
-
-                    # convert Salient MFG to DGL MFG
-                    """
-                    with nvtx.annotate('convert Salient MFG to DGL MFG', color='cyan'):
-                        blocks = []
-                        for adj in batch.adjs:
-                            with nvtx.annotate('adj loop iteration'):
-                                # should just be references, not copying..
-                                # need to also do a tranpose here since dgl's MFG has a flipped
-                                # notion of direction
-                                #with nvtx.annotate('adj transpose + csr'):
-                                    #rowptr, col, edge_ids = adj.adj_t.t().csr()
-                                #with nvtx.annotate('adj transpose'):
-                                #    adj_transpose = adj.adj_t.t()
-                                #with nvtx.annotate('adj csr'):
-                                #    rowptr, col, edge_ids = adj_transpose.csr()
-                               # with nvtx.annotate('csc'):
-                               #     rowptr, col, edge_ids = adj.adj_t.csc()
-                                # returns edge_ids as None instead of an empty tensor
-                                with nvtx.annotate('adj extract csr'):
-                                    rowptr, col, edge_ids = adj.adj_t.csr()
-                                edge_ids = th.empty(0) if edge_ids is None else edge_ids
-
-                                #print('create_block')
-                                #print(adj)
-                                #print('rowptr')
-                                #print(rowptr)
-                                #print('col')
-                                #print(col)
-                                with nvtx.annotate('create_block from csr'):
-                                    block = dgl.create_block(('csr', (rowptr, col, edge_ids)),
-                                                             num_src_nodes=adj.size[1],
-                                                             num_dst_nodes=adj.size[0])
-                                # looks like also need coo to set _ID parameters in blocks
-                                # can potentially just optimize to coo
-                                #print('block.__dict__')
-                                #print(block.__dict__)
-                                #print('adj.adj_t.coo()')
-                                #print(adj.adj_t.coo())
-
-                                #src_nodes, dst_nodes, _ = adj.adj_t.t().coo()
-                                with nvtx.annotate('src_nodes, dst_nodes'):
-                                    src_nodes = torch.arange(block.number_of_src_nodes())
-                                    dst_nodes = torch.arange(block.number_of_dst_nodes())
-
-                                #print(f'sz src_nodes: {len(torch.unique(src_nodes))}')
-                                #print(f'sz dst_nodes: {len(torch.unique(dst_nodes))}')
-                                #print(f'len rowptr: {len(rowptr)}')
-                                #print(f'len col: {len(col)}')
-                                #print(f'len src_nodes: {len(src_nodes)}')
-                                #print(f'len dst_nodes: {len(dst_nodes)}')
-                                # torch.unique calls seem not efficient at all
-                                # dst nodes also need to include src ndoes
-
-                                #dst_nodes = torch.unique(dst_nodes)
-                                #src_nodes = torch.unique(torch.cat((src_nodes, dst_nodes)))
-
-                                #print('rowptr')
-                                #print(rowptr)
-                                #print('col')
-                                #print(col)
-                                #print('adj')
-                                #print(adj)
-                                #print('src_nodes')
-                                #print(src_nodes)
-                                #print('dst_nodes')
-                                #print(dst_nodes)
-                                #etype = None
-                                #etid = block.get_etype_id(etype)
-                                #block[etid]['_node_frames'][0]['_ID'] = src_nodes
-                                #block[etid]['_node_frames'][1]['_ID'] = dst_nodes
-                                #print(f'src_nodes: {torch.sort(src_nodes)}')
-                                with nvtx.annotate('_node_frames _ID'):
-                                    block._node_frames[0]['_ID'] = src_nodes
-                                    block._node_frames[1]['_ID'] = dst_nodes
-                                #print(f'dst_nodes: {torch.sort(dst_nodes)}')
-                                blocks.append(block)
-
-                        # Identify the input features and output labels
-                        # nodes that are considered an 'input' to training are the expanded neighborhood
-                        # of the batch nodes
-                        # nodes that are considered 'output' nodes are the batch nodes with respect to which
-                        # the loss of the minibatch will be calculated
-
-                        # not necessary except for debugging
-                        # input_nodes, output_nodes = blocks[0].srcdata[dgl.NID], blocks[-1].dstdata[dgl.NID]
-                    # Load the input features as well as output labels
-                    # load subtensor is how DGL slices
-                    # batch_inputs, batch_labels = load_subtensor(x, y, output_nodes, input_nodes, device)
-                    # However salient has already sliced in the c++ threads, so don't do a load_subtensor call
-                    #print('batch.x')
-                    #print(len(batch.x))
-                    #print('batch.y')
-                    #print(len(batch.y))
-
-                    # using prefetcher
-                    #with nvtx.annotate('transfer x,y to GPU', color='yellow'):
-                    #    batch_inputs = batch.x.to(device)
-                    #    batch_labels = batch.y.to(device)
-
-                    ## Send everything to device, blocks now points on tensors on device
-                    #with nvtx.annotate('transfer MFGs to GPU', color='yellow'):
-                    #    blocks = [block.int().to(device) for block in blocks]
-                    """
 
                     for batch in inputs:
                         # Compute loss and prediction
