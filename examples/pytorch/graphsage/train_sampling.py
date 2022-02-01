@@ -125,17 +125,19 @@ if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--gpu', type=int, default=0,
                            help="GPU device ID. Use -1 for CPU training")
-    argparser.add_argument('--dataset', type=str, default='reddit')
-    argparser.add_argument('--num-epochs', type=int, default=20)
+    #argparser.add_argument('--dataset', type=str, default='reddit')
+    argparser.add_argument('--dataset', type=str, default='ogbn-products')
+    argparser.add_argument('--num-epochs', type=int, default=3)
     argparser.add_argument('--num-hidden', type=int, default=16)
-    argparser.add_argument('--num-layers', type=int, default=2)
-    argparser.add_argument('--fan-out', type=str, default='10,25')
-    argparser.add_argument('--batch-size', type=int, default=1000)
+    argparser.add_argument('--num-layers', type=int, default=3)
+    argparser.add_argument('--fan-out', type=str, default='5,10,15')
+    argparser.add_argument('--batch-size', type=int, default=1024)
     argparser.add_argument('--log-every', type=int, default=20)
     argparser.add_argument('--eval-every', type=int, default=5)
     argparser.add_argument('--lr', type=float, default=0.003)
     argparser.add_argument('--dropout', type=float, default=0.5)
-    argparser.add_argument('--num-workers', type=int, default=4,
+    #argparser.add_argument('--num-workers', type=int, default=4,
+    argparser.add_argument('--num-workers', type=int, default=2,
                            help="Number of sampling processes. Use 0 for no extra process.")
     argparser.add_argument('--sample-gpu', action='store_true',
                            help="Perform the sampling process on the GPU. Must have 0 workers.")
