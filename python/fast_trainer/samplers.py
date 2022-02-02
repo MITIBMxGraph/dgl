@@ -30,6 +30,7 @@ def Adj__from_fast_sampler(adj) -> Adj:
         sparse_sizes[::-1]
     )
 
+@nvtx.annotate('adj to Block', color='cyan')
 def Block__from_fast_sampler(adj) -> DGLBlock:
     rowptr, col, edge_ids, sparse_sizes = adj
     # for dgl no longer need to create Adj and SparseTensor
@@ -42,8 +43,13 @@ def Block__from_fast_sampler(adj) -> DGLBlock:
                                      num_src_nodes=sparse_sizes[0],
                                      num_dst_nodes=sparse_sizes[1])
         with nvtx.annotate('_node_frames _ID torch.arange()'):
-            block._node_frames[0]['_ID'] = torch.arange(block.number_of_src_nodes())
-            block._node_frames[1]['_ID'] = torch.arange(block.number_of_dst_nodes())
+            # pass in a flag if should pin?
+            block._node_frames[0]['_ID'] = torch.arange(block.number_of_src_nodes()).pin_memory()
+            block._node_frames[1]['_ID'] = torch.arange(block.number_of_dst_nodes()).pin_memory()
+    # DEBUG, make sure all component tensors are in pinned memory:
+    # 1. Check graph structure
+    # 2. check features (are features empty here? Or is this an extra copy of features!?)
+    # 3. check misc info 
     return block
 
 
@@ -104,13 +110,18 @@ class PreparedBatch(NamedTuple):
         """
 
     def to(self, device, non_blocking=False):
+        # transfer blocks first
+        tmp_blocks=[block.int().to(device=device, non_blocking=False) for block in self.blocks] if self.blocks is not None else None
+        #torch.cuda.synchronize()
         return PreparedBatch(
             x=self.x.to(
                 device=device, non_blocking=non_blocking) if self.x is not None else None,
             y=self.y.to(
                 device=device, non_blocking=non_blocking) if self.y is not None else None,
-            blocks=[block.int().to(device=device, non_blocking=non_blocking)
-                  for block in self.blocks],
+            #blocks=[block.int().to(device=device, non_blocking=non_blocking)
+            #      for block in self.blocks],
+           # blocks=None,
+            blocks=tmp_blocks,
             idx_range=self.idx_range
         )
 

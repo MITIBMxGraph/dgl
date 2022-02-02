@@ -88,6 +88,8 @@ def run(args, device, data):
 
     compute_stream = torch.cuda.Stream(device)
 
+    Batch = namedtuple('Batch', ['x', 'y', 'blocks'])
+
     # Comparison loop
     iter_tput = []
     for epoch in range(args.num_epochs):
@@ -111,12 +113,18 @@ def run(args, device, data):
                             break
 
                         # usually just one batch?
-                        for batch in inputs:
+                        for prepared_batch in inputs:
 
                             # need this wait() call with dgl's AsyncTransferer
                             #batch = batch.wait()
                             #batch = Batch(x=prepared_batch.x.wait(), y=prepared_batch.y.wait(), blocks=prepared_batch.blocks.wait())
+                            batch = prepared_batch
 
+                            batch_pred = batch.y * 3.14
+                            batch_pred -= 0.1
+                            batch_pred = torch.square(batch_pred)
+                            batch_pred = torch.pow(batch_pred, batch_pred)
+                            """
                             # Compute loss and prediction
                             with nvtx.annotate('model'):
                                 #with th.autograd.profiler.emit_nvtx():
@@ -137,15 +145,18 @@ def run(args, device, data):
                                 loss.backward()
                             with nvtx.annotate('step'):
                                 optimizer.step()
+                            """
 
                     with nvtx.annotate('log'):
                         iter_tput.append(batch_pred.size(0) / (time.time() - tic_step))
                         if step % args.log_every == 0:
                             #acc = compute_acc(batch_pred, batch_labels)
-                            acc = compute_acc(batch_pred, batch.y)
+                            #acc = compute_acc(batch_pred, batch.y)
                             gpu_mem_alloc = th.cuda.max_memory_allocated() / 1000000 if th.cuda.is_available() else 0
+                            #print('Epoch {:05d} | Step {:05d} | Loss {:.4f} | Train Acc {:.4f} | Speed (samples/sec) {:.4f} | GPU {:.1f} MB'.format(
+                            #    epoch, step, loss.item(), acc.item(), np.mean(iter_tput[3:]), gpu_mem_alloc))
                             print('Epoch {:05d} | Step {:05d} | Loss {:.4f} | Train Acc {:.4f} | Speed (samples/sec) {:.4f} | GPU {:.1f} MB'.format(
-                                epoch, step, loss.item(), acc.item(), np.mean(iter_tput[3:]), gpu_mem_alloc))
+                                epoch, step, 0, 0, np.mean(iter_tput[3:]), gpu_mem_alloc))
                         tic_step = time.time()
 
             toc = time.time()

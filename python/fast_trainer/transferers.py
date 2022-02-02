@@ -5,6 +5,11 @@ import torch
 
 from .samplers import ProtoBatch, PreparedBatch
 
+#profiling
+import nvtx
+
+import dgl
+
 
 class DeviceIterator(Iterator[List[PreparedBatch]]):
     '''
@@ -23,21 +28,53 @@ class DevicePrefetcher(DeviceIterator):
 
         self.it = it
         self.streams = [torch.cuda.Stream(device) for device in devices]
+        self.transferers = [dgl.dataloading.AsyncTransferer(torch.device(device)) for device in devices]
+
+        # clean up, device prefetcher should be generic and not have a specified return value
+        # rv should be specified by the iterator
+        self.rv = namedtuple('batch', ['x', 'y', 'blocks'])
+
         self.next = []
         self.preload()
         #self.DT_TOTAL_WAIT_TIME = None
         self.DT_WAIT_TIMER_LIST = []
 
-
+    @nvtx.annotate('preload', color='yellow')
     def preload(self):
         self.next = []
         for device, stream in zip(self.devices, self.streams):
+        #for device, transferer in zip(self.devices, self.transferers):
             batch = next(self.it, None)
             if batch is None:
                 break
 
+            # default
+            #with torch.cuda.stream(stream):
+            #    self.next.append(batch.to(device, non_blocking=True))
+
+            # cannout use single line like this, cleanup with function later
+            #self.next.append(transferer.async_copy(batch, torch.device(device)))
+
+            """
+            print(f'x is pinned: {batch.x.is_pinned()}')
+            print(f'y is pinned: {batch.y.is_pinned()}')
+            [print(type(block)) for block in batch.blocks]
+            [print(type(block.int())) for block in batch.blocks]
+            [print(block.int().__dict__) for block in batch.blocks]
+            x_gpu = transferer.async_copy(batch.x, torch.device(device))
+            y_gpu = transferer.async_copy(batch.y, torch.device(device))
+            blocks_gpu = [transferer.async_copy(block.int(), torch.device(device)) for block in batch.blocks]
+            self.next.append(self.rv(x=x_gpu, y=y_gpu, blocks=blocks_gpu))
+            print('appended')
+            """
+
+            #use default stream for blocks
+            #blocks_gpu = [block.int().to(device, non_blocking=False) for block in batch.blocks]
             with torch.cuda.stream(stream):
-                self.next.append(batch.to(device, non_blocking=True))
+                x_gpu = batch.x.to(device=device, non_blocking=True)
+                y_gpu = batch.y.to(device=device, non_blocking=True)
+            blocks_gpu = [block.int().to(device, non_blocking=False) for block in batch.blocks]
+            self.next.append(PreparedBatch(x=x_gpu, y=y_gpu, blocks=blocks_gpu, idx_range=batch.idx_range))
 
 
     def __next__(self):
