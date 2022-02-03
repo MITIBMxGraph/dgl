@@ -7,7 +7,7 @@ import sklearn.linear_model as lm
 import sklearn.metrics as skm
 import tqdm
 
-use_fp16 = True
+#use_fp16 = True
 
 class SAGE(nn.Module):
     def __init__(self, in_feats, n_hidden, n_classes, n_layers, activation, dropout):
