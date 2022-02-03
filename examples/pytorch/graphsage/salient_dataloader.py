@@ -52,6 +52,13 @@ def run(args, device, data):
     #n_classes, train_g, val_g, test_g, train_nfeat, train_labels, \
     #val_nfeat, val_labels, test_nfeat, test_labels = data
     n_classes, g, x, y = data
+
+    # change to half precision
+    # do not want to bloat communication / transfers unnecessarily when precision is not warranted
+    #x = x.type(th.HalfTensor)
+    x = x.half()
+    #x = x.short() # cast later to half
+
     x_dim = x.shape[1]
     train_nid = th.nonzero(g.ndata['train_mask'], as_tuple=True)[0]
     val_nid = th.nonzero(g.ndata['val_mask'], as_tuple=True)[0]
@@ -101,52 +108,66 @@ def run(args, device, data):
 
             while True:
 
-                with torch.cuda.stream(compute_stream):
-                    with nvtx.annotate('iteration'):
-                        step += 1
-                        #print(step)
+                #with torch.cuda.stream(compute_stream):
+                with nvtx.annotate('iteration'):
+                    step += 1
+                    #print(step)
 
-                        inputs = next(salient__dataloader, [])
-                        if len(inputs) == 0:
-                            break
+                    inputs = next(salient__dataloader, [])
+                    if len(inputs) == 0:
+                        break
 
-                        # usually just one batch?
-                        for batch in inputs:
+                    # usually just one batch?
+                    for batch in inputs:
 
-                            # need this wait() call with dgl's AsyncTransferer
-                            #batch = batch.wait()
-                            #batch = Batch(x=prepared_batch.x.wait(), y=prepared_batch.y.wait(), blocks=prepared_batch.blocks.wait())
+                        # need this wait() call with dgl's AsyncTransferer
+                        #batch = batch.wait()
+                        #batch = Batch(x=prepared_batch.x.wait(), y=prepared_batch.y.wait(), blocks=prepared_batch.blocks.wait())
 
-                            # Compute loss and prediction
-                            with nvtx.annotate('model'):
-                                #with th.autograd.profiler.emit_nvtx():
-                                    #batch_pred = model(blocks, batch_inputs)
-                                batch_pred = model(batch.blocks, batch.x)
-                            #print('---------- Salient Summary ----------')
-                            #print(f'blocks: {blocks}')
-                            #print(f'sz input_nodes, sz output_nodes: {len(input_nodes)}, {len(output_nodes)}')
-                            #print(f'sz batch.x, sz batch.y: {len(batch.x)}, {len(batch.y)}')
-                            #print(f'sz batch_pred: {batch_pred.size()}')
-                            #print('---------- --------------- ----------')
-                            with nvtx.annotate('loss'):
-                                #loss = loss_fcn(batch_pred, batch_labels)
-                                loss = loss_fcn(batch_pred, batch.y)
-                            with nvtx.annotate('zero_grad'):
-                                optimizer.zero_grad()
-                            with nvtx.annotate('backward', color='purple'):
-                                loss.backward()
-                            with nvtx.annotate('step'):
-                                optimizer.step()
+                        #print(f'batch.x.device():                   {batch.x.device}')
+                        #print(f'batch.y.device():                   {batch.y.device}')
+                        #for block in batch.blocks:
+                            #print(f'block device:                        {block.device}')
+                            #print(f"block._node_frames[0]['_ID'].device: {block._node_frames[0]['_ID'].device}")
+                            #print(f"block._node_frames[1]['_ID'].device: {block._node_frames[1]['_ID'].device}")
+                            #print(f"block._edge_frames[0]['_ID'].device: {block._edge_frames[0]['_ID'].device}")
+                            #print(f"block._edge_frames[1]['_ID'].device: {block._edge_frames[1]['_ID'].device}")
+                            #print(f"block._graph.ctx.device_type:        {block._graph.ctx.device_type}")
 
-                    with nvtx.annotate('log'):
-                        iter_tput.append(batch_pred.size(0) / (time.time() - tic_step))
-                        if step % args.log_every == 0:
-                            #acc = compute_acc(batch_pred, batch_labels)
-                            acc = compute_acc(batch_pred, batch.y)
-                            gpu_mem_alloc = th.cuda.max_memory_allocated() / 1000000 if th.cuda.is_available() else 0
-                            print('Epoch {:05d} | Step {:05d} | Loss {:.4f} | Train Acc {:.4f} | Speed (samples/sec) {:.4f} | GPU {:.1f} MB'.format(
-                                epoch, step, loss.item(), acc.item(), np.mean(iter_tput[3:]), gpu_mem_alloc))
-                        tic_step = time.time()
+                        # Compute loss and prediction
+                        with nvtx.annotate('model'):
+                            #with th.autograd.profiler.emit_nvtx():
+                                #batch_pred = model(blocks, batch_inputs)
+                            batch_pred = model(batch.blocks, batch.x)
+                        #print('---------- Salient Summary ----------')
+                        #print(f'blocks: {blocks}')
+                        #print(f'sz input_nodes, sz output_nodes: {len(input_nodes)}, {len(output_nodes)}')
+                        #print(f'sz batch.x, sz batch.y: {len(batch.x)}, {len(batch.y)}')
+                        #print(f'sz batch_pred: {batch_pred.size()}')
+                        #print('---------- --------------- ----------')
+                        with nvtx.annotate('loss'):
+                            #loss = loss_fcn(batch_pred, batch_labels)
+                            loss = loss_fcn(batch_pred, batch.y)
+                        with nvtx.annotate('zero_grad'):
+                            optimizer.zero_grad()
+                        with nvtx.annotate('backward', color='purple'):
+                            loss.backward()
+                        with nvtx.annotate('step'):
+                            optimizer.step()
+
+                with nvtx.annotate('log'):
+                    iter_tput.append(batch_pred.size(0) / (time.time() - tic_step))
+                    if step % args.log_every == 0:
+                        #acc = compute_acc(batch_pred, batch_labels)
+                        acc = compute_acc(batch_pred, batch.y)
+                        gpu_mem_alloc = th.cuda.max_memory_allocated() / 1000000 if th.cuda.is_available() else 0
+                        print('Epoch {:05d} | Step {:05d} | Loss {:.4f} | Train Acc {:.4f} | Speed (samples/sec) {:.4f} | GPU {:.1f} MB'.format(
+                            epoch, step, loss.item(), acc.item(), np.mean(iter_tput[3:]), gpu_mem_alloc))
+                    tic_step = time.time()
+
+                # DEBUG
+                #if step == 3:
+                #    return
 
             toc = time.time()
             print('Epoch Time(s): {:.4f}'.format(toc - tic))

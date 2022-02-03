@@ -68,13 +68,24 @@ class DevicePrefetcher(DeviceIterator):
             print('appended')
             """
 
-            #use default stream for blocks
-            #blocks_gpu = [block.int().to(device, non_blocking=False) for block in batch.blocks]
+            #gpu_mem_alloc = torch.cuda.max_memory_allocated() / 1000000 if torch.cuda.is_available() else 0
+            #print(f'gpu mem before: {gpu_mem_alloc}')
+            #use default stream for blocks, blocking (but blocks are typically much smaller than features)
+            with nvtx.annotate('sending blocks to device', color='purple'):
+                blocks_gpu = [block.int().to(device, non_blocking=False) for block in batch.blocks]
+            #with nvtx.annotate('just after async', color='red'):
+            #    print('just after async transfer call!')
+                #[print(block.device) for block in blocks_gpu]
+            #torch.cuda.synchronize()
             with torch.cuda.stream(stream):
-                x_gpu = batch.x.to(device=device, non_blocking=True)
-                y_gpu = batch.y.to(device=device, non_blocking=True)
-            blocks_gpu = [block.int().to(device, non_blocking=False) for block in batch.blocks]
-            self.next.append(PreparedBatch(x=x_gpu, y=y_gpu, blocks=blocks_gpu, idx_range=batch.idx_range))
+                with nvtx.annotate('sending x and y to device', color='orange'):
+                    x_gpu = batch.x.to(device=device, non_blocking=True)
+                    y_gpu = batch.y.to(device=device, non_blocking=True)
+            #blocks_gpu = [block.int().to(device, non_blocking=False) for block in batch.blocks]
+            with nvtx.annotate('returning PreparedBatch', color='black'):
+                self.next.append(PreparedBatch(x=x_gpu, y=y_gpu, blocks=blocks_gpu, idx_range=batch.idx_range))
+            #gpu_mem_alloc = torch.cuda.max_memory_allocated() / 1000000 if torch.cuda.is_available() else 0
+            #print(f'gpu mem after: {gpu_mem_alloc}')
 
 
     def __next__(self):
