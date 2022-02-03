@@ -170,7 +170,7 @@ torch::Tensor serial_index(
     torch::Tensor const idx,
     int64_t const n,
     bool const pin_memory = false) {
-  return AT_DISPATCH_ALL_TYPES(in.scalar_type(), "serial_index", [&] {
+  return AT_DISPATCH_ALL_TYPES_AND(at::ScalarType::Half, in.scalar_type(), "serial_index", [&] {
     return serial_index_impl<scalar_t>(in, idx, n, pin_memory);
   });
 }
@@ -179,7 +179,7 @@ torch::Tensor serial_index(
     torch::Tensor const in,
     torch::Tensor const idx,
     bool const pin_memory = false) {
-  return AT_DISPATCH_ALL_TYPES(in.scalar_type(), "serial_index", [&] {
+  return AT_DISPATCH_ALL_TYPES_AND(at::ScalarType::Half, in.scalar_type(), "serial_index", [&] {
     return serial_index_impl<scalar_t>(in, idx, pin_memory);
   });
 }

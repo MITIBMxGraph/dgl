@@ -49,7 +49,19 @@ def Block__from_fast_sampler(adj) -> DGLBlock:
     # DEBUG, make sure all component tensors are in pinned memory:
     # 1. Check graph structure
     # 2. check features (are features empty here? Or is this an extra copy of features!?)
-    # 3. check misc info 
+    """
+    print('nframes')
+    for nframe in block._node_frames:
+        print(type(nframe))
+        print(nframe.__dict__)
+        print(nframe['_ID'])
+        print(nframe.size())
+        print(nframe.is_pinned())
+    for nframe in block._node_frames:
+        print(nframe.size())
+        print(nframe.is_pinned())
+    # 3. check misc info
+    """
     return block
 
 
