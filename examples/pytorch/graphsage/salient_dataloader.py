@@ -89,7 +89,7 @@ def run(args, device, data):
 
     # Define model and optimizer
     model = SAGE(x_dim, args.num_hidden, n_classes, args.num_layers, F.relu, args.dropout)
-    model = model.to(device)
+    model = model.half().to(device)
     loss_fcn = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
