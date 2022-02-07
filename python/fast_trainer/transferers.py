@@ -72,7 +72,9 @@ class DevicePrefetcher(DeviceIterator):
             #print(f'gpu mem before: {gpu_mem_alloc}')
             #use default stream for blocks, blocking (but blocks are typically much smaller than features)
             with nvtx.annotate('sending blocks to device', color='purple'):
-                blocks_gpu = [block.int().to(device, non_blocking=False) for block in batch.blocks]
+                with torch.autograd.profiler.emit_nvtx():
+                    #blocks_gpu = [block.int().to(device, non_blocking=False) for block in batch.blocks]
+                    blocks_gpu = [block.to(device, non_blocking=False) for block in batch.blocks]
             #with nvtx.annotate('just after async', color='red'):
             #    print('just after async transfer call!')
                 #[print(block.device) for block in blocks_gpu]
