@@ -19,6 +19,9 @@ from . import backend as F
 from .frame import Frame
 from .view import HeteroNodeView, HeteroNodeDataView, HeteroEdgeView, HeteroEdgeDataView
 
+# profiling
+import nvtx
+
 __all__ = ['DGLHeteroGraph', 'combine_names']
 
 class DGLHeteroGraph(object):
@@ -5373,6 +5376,7 @@ class DGLHeteroGraph(object):
         """
         return F.to_backend_ctx(self._graph.ctx)
 
+    @nvtx.annotate("DGLBLock to()", color='red')
     def to(self, device, **kwargs):  # pylint: disable=invalid-name
         """Move ndata, edata and graph structure to the targeted device (cpu/gpu).
 
@@ -5423,32 +5427,36 @@ class DGLHeteroGraph(object):
         if device is None or self.device == device:
             return self
 
-        ret = copy.copy(self)
+        with nvtx.annotate('copy self', color='black'):
+            ret = copy.copy(self)
 
         # 1. Copy graph structure
-        ret._graph = self._graph.copy_to(utils.to_dgl_context(device))
+        with nvtx.annotate('copy graph structure', color='orange'):
+            ret._graph = self._graph.copy_to(utils.to_dgl_context(device))
 
         # 2. Copy features
         # TODO(minjie): handle initializer
-        new_nframes = []
-        for nframe in self._node_frames:
-            new_nframes.append(nframe.to(device, **kwargs))
-        ret._node_frames = new_nframes
+        with nvtx.annotate('copy features', color='yellow'):
+            new_nframes = []
+            for nframe in self._node_frames:
+                new_nframes.append(nframe.to(device, **kwargs))
+            ret._node_frames = new_nframes
 
-        new_eframes = []
-        for eframe in self._edge_frames:
-            new_eframes.append(eframe.to(device, **kwargs))
-        ret._edge_frames = new_eframes
+            new_eframes = []
+            for eframe in self._edge_frames:
+                new_eframes.append(eframe.to(device, **kwargs))
+            ret._edge_frames = new_eframes
 
         # 2. Copy misc info
-        if self._batch_num_nodes is not None:
-            new_bnn = {k : F.copy_to(num, device, **kwargs)
-                       for k, num in self._batch_num_nodes.items()}
-            ret._batch_num_nodes = new_bnn
-        if self._batch_num_edges is not None:
-            new_bne = {k : F.copy_to(num, device, **kwargs)
-                       for k, num in self._batch_num_edges.items()}
-            ret._batch_num_edges = new_bne
+        with nvtx.annotate('copy misc info', color='green'):
+            if self._batch_num_nodes is not None:
+                new_bnn = {k : F.copy_to(num, device, **kwargs)
+                           for k, num in self._batch_num_nodes.items()}
+                ret._batch_num_nodes = new_bnn
+            if self._batch_num_edges is not None:
+                new_bne = {k : F.copy_to(num, device, **kwargs)
+                           for k, num in self._batch_num_edges.items()}
+                ret._batch_num_edges = new_bne
 
         return ret
 
