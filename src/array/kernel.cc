@@ -14,6 +14,9 @@
 #include "../c_api_common.h"
 #include "./check.h"
 
+// DEBUGGING
+#include <iostream>
+
 using namespace dgl::runtime;
 
 namespace dgl {
@@ -37,6 +40,14 @@ void SpMM(const std::string& op, const std::string& reduce,
     ATEN_ID_TYPE_SWITCH(graph->DataType(), IdType, {
       ATEN_FLOAT_BITS_SWITCH(out->dtype, bits, "Feature data", {
         if (format == SparseFormat::kCSC) {
+          printf("in SpMM about to enter SpMMCsr\n");
+          // DEBUG
+          printf("getting graph\n");
+          CSRMatrix m = graph->GetCSCMatrix(0);
+          printf("printing info\n");
+          for (IdArray arr: {m.indptr, m.indices, m.data}) {
+            std::cout << arr.NumElements() << std::endl; 
+          }
           SpMMCsr<XPU, IdType, bits>(
               op, reduce, bcast, graph->GetCSCMatrix(0),
               ufeat, efeat, out, out_aux);

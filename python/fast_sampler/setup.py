@@ -32,7 +32,11 @@ def get_extensions():
     else:
         print('Compiling without OpenMP...')
 
-    include_dirs = [ROOT_PATH, ROOT_PATH.joinpath('parallel-hashmap')]
+    include_dirs = [ROOT_PATH, ROOT_PATH.joinpath('parallel-hashmap'),
+    # hacked-in dgl include
+        '/home/gridsan/pmurzynowski/dgl/include/',
+        '/home/gridsan/pmurzynowski/dgl/third_party/dmlc-core/include',
+        '/home/gridsan/pmurzynowski/dgl/third_party/dlpack/include']
 
     return [
         CppExtension(

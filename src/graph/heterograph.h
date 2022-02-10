@@ -228,6 +228,9 @@ class HeteroGraph : public BaseHeteroGraph {
   static HeteroGraphPtr CopyTo(HeteroGraphPtr g, const DLContext &ctx,
                                const DGLStreamHandle &stream = nullptr);
 
+  /*! \brief Pin in memory for H2D */
+  static void Pin(HeteroGraphPtr g, const DLContext &ctx);
+
   /*! \brief Copy the data to shared memory.
   *
   * Also save names of node types and edge types of the HeteroGraph object to shared memory

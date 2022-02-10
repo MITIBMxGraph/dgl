@@ -208,6 +208,10 @@ class UnitGraph : public BaseHeteroGraph {
   static HeteroGraphPtr CopyTo(HeteroGraphPtr g, const DLContext &ctx,
                                const DGLStreamHandle &stream = nullptr);
 
+  /*! \brief Pin the data for H2D */
+  static void Pin(HeteroGraphPtr g, const DLContext &ctx);
+
+
   /*! 
    * \brief Create in-edge CSR format of the unit graph.
    * \param inplace if true and the in-edge CSR format does not exist, the created

@@ -232,7 +232,8 @@ class HeteroGraphIndex(ObjectBase):
         HeteroGraphIndex
             The graph index on the given device context.
         """
-        return _CAPI_DGLHeteroCopyTo(self, ctx.device_type, ctx.device_id)
+        #return _CAPI_DGLHeteroCopyTo(self, ctx.device_type, ctx.device_id)
+        return _CAPI_DGLHeteroAsyncCopyTo(self, ctx.device_type, ctx.device_id)
 
     def shared_memory(self, name, ntypes=None, etypes=None, formats=('coo', 'csr', 'csc')):
         """Return a copy of this graph in shared memory

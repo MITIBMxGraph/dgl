@@ -21,6 +21,13 @@ import nvtx
 
 from collections import namedtuple
 
+# half precision support
+from torch.cuda.amp import autocast, GradScaler
+
+
+use_fp16 = True
+
+
 @nvtx.annotate('compute_acc')
 def compute_acc(pred, labels):
     """
@@ -55,9 +62,8 @@ def run(args, device, data):
 
     # change to half precision
     # do not want to bloat communication / transfers unnecessarily when precision is not warranted
-    #x = x.type(th.HalfTensor)
-    x = x.half()
-    #x = x.short() # cast later to half
+    if use_fp16:
+        x = x.half()
 
     x_dim = x.shape[1]
     train_nid = th.nonzero(g.ndata['train_mask'], as_tuple=True)[0]
@@ -83,13 +89,14 @@ def run(args, device, data):
                 skip_nonfull_batch=False, pin_memory=True # debug pinned memory
             )
 
-    train_loader = FastSampler(40, 50, cfg)
+    #train_loader = FastSampler(40, 50, cfg)
     #train_loader = FastSampler(2, 50, cfg)
-    #train_loader = FastSampler(1, 50, cfg) # serial to debug
+    train_loader = FastSampler(1, 50, cfg) # serial to debug
 
     # Define model and optimizer
     model = SAGE(x_dim, args.num_hidden, n_classes, args.num_layers, F.relu, args.dropout)
-    model = model.half().to(device)
+    #model = model.half().to(device)
+    model = model.to(device)
     loss_fcn = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
@@ -135,19 +142,20 @@ def run(args, device, data):
                             #print(f"block._graph.ctx.device_type:        {block._graph.ctx.device_type}")
 
                         # Compute loss and prediction
-                        with nvtx.annotate('model'):
-                            #with th.autograd.profiler.emit_nvtx():
-                                #batch_pred = model(blocks, batch_inputs)
-                            batch_pred = model(batch.blocks, batch.x)
-                        #print('---------- Salient Summary ----------')
-                        #print(f'blocks: {blocks}')
-                        #print(f'sz input_nodes, sz output_nodes: {len(input_nodes)}, {len(output_nodes)}')
-                        #print(f'sz batch.x, sz batch.y: {len(batch.x)}, {len(batch.y)}')
-                        #print(f'sz batch_pred: {batch_pred.size()}')
-                        #print('---------- --------------- ----------')
-                        with nvtx.annotate('loss'):
-                            #loss = loss_fcn(batch_pred, batch_labels)
-                            loss = loss_fcn(batch_pred, batch.y)
+                        with autocast(enabled=use_fp16):
+                            print('---------- Salient Summary ----------')
+                            print(f'blocks: {batch.blocks}')
+                            print(f'sz batch.x, sz batch.y: {len(batch.x)}, {len(batch.y)}')
+                            with nvtx.annotate('model'):
+                                #with th.autograd.profiler.emit_nvtx():
+                                    #batch_pred = model(blocks, batch_inputs)
+                                batch_pred = model(batch.blocks, batch.x)
+                            return
+                            print(f'sz batch_pred: {batch_pred.size()}')
+                            print('---------- --------------- ----------')
+                            with nvtx.annotate('loss'):
+                                #loss = loss_fcn(batch_pred, batch_labels)
+                                loss = loss_fcn(batch_pred, batch.y)
                         with nvtx.annotate('zero_grad'):
                             optimizer.zero_grad()
                         with nvtx.annotate('backward', color='purple'):
@@ -155,6 +163,16 @@ def run(args, device, data):
                         with nvtx.annotate('step'):
                             optimizer.step()
 
+                        """
+                        if use_fp16:
+                            # Backprop w/ gradient scaling
+                            scaler.scale(loss).backward()
+                            scaler.step(optimizer)
+                            scaler.update()
+                        else:
+                            loss.backward()
+                            optimizer.step()
+                        """
                 with nvtx.annotate('log'):
                     iter_tput.append(batch_pred.size(0) / (time.time() - tic_step))
                     if step % args.log_every == 0:
@@ -164,10 +182,6 @@ def run(args, device, data):
                         print('Epoch {:05d} | Step {:05d} | Loss {:.4f} | Train Acc {:.4f} | Speed (samples/sec) {:.4f} | GPU {:.1f} MB'.format(
                             epoch, step, loss.item(), acc.item(), np.mean(iter_tput[3:]), gpu_mem_alloc))
                     tic_step = time.time()
-
-                # DEBUG
-                #if step == 3:
-                #    return
 
             toc = time.time()
             print('Epoch Time(s): {:.4f}'.format(toc - tic))
@@ -187,13 +201,13 @@ if __name__ == '__main__':
     argparser.add_argument('--gpu', type=int, default=0,
                            help="GPU device ID. Use -1 for CPU training")
     argparser.add_argument('--dataset', type=str, default='ogbn-products')
-    argparser.add_argument('--num-epochs', type=int, default=2)
+    argparser.add_argument('--num-epochs', type=int, default=1)
     argparser.add_argument('--num-hidden', type=int, default=16)
     argparser.add_argument('--num-layers', type=int, default=3)
-    argparser.add_argument('--fan-out', type=str, default='5,10,15')
-    #argparser.add_argument('--fan-out', type=str, default='2,3,4')
-    argparser.add_argument('--batch-size', type=int, default=1024)
-    #argparser.add_argument('--batch-size', type=int, default=4)
+    #argparser.add_argument('--fan-out', type=str, default='5,10,15')
+    argparser.add_argument('--fan-out', type=str, default='2,3,4')
+    #argparser.add_argument('--batch-size', type=int, default=1024)
+    argparser.add_argument('--batch-size', type=int, default=4)
     argparser.add_argument('--log-every', type=int, default=20)
     argparser.add_argument('--eval-every', type=int, default=5)
     argparser.add_argument('--lr', type=float, default=0.003)

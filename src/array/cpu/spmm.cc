@@ -19,9 +19,11 @@ void SpMMCsr(const std::string& op, const std::string& reduce,
              NDArray out,
              std::vector<NDArray> out_aux) {
   const int64_t dim = bcast.out_len;
+  printf("In SpMMCsr about to enter SpMMSumCsr\n");
   if (reduce == "sum") {
     SWITCH_BITS(bits, DType, {
       SWITCH_OP(op, Op, {
+        printf("entering\n");
         cpu::SpMMSumCsr<IdType, DType, Op>(bcast, csr, ufeat, efeat, out);
       });
     });

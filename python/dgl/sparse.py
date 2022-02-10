@@ -164,12 +164,30 @@ def _gspmm(gidx, op, reduce_op, u, e):
     arg_u_nd = to_dgl_nd_for_write(arg_u)
     arg_e_nd = to_dgl_nd_for_write(arg_e)
     if gidx.number_of_edges(0) > 0:
+        print('calling DGLKernel')
+        print(f'gidx: {gidx}')
+        print(f'type gidx: {gidx.dtype}')
+        print(f'ctx gidx: {gidx.ctx}')
+        print(f'op: {op}')
+        print(f'reduce_op: {reduce_op}')
+        arg3 = to_dgl_nd(u if use_u else None)
+        print(f'arg3: {arg3}')
+        arg4 = to_dgl_nd(e if use_e else None)
+        print(f'arg4: {arg4}')
+        arg5 = to_dgl_nd_for_write(v)
+        print(f'arg5: {arg5}')
+        print(f'arg_u_nd: {arg_u_nd}')
+        print(f'arg_e_nd: {arg_e_nd}')
         _CAPI_DGLKernelSpMM(gidx, op, reduce_op,
-                            to_dgl_nd(u if use_u else None),
-                            to_dgl_nd(e if use_e else None),
-                            to_dgl_nd_for_write(v),
+                            #to_dgl_nd(u if use_u else None),
+                            #to_dgl_nd(e if use_e else None),
+                            #to_dgl_nd_for_write(v),
+                            arg3,
+                            arg4,
+                            arg5,
                             arg_u_nd,
                             arg_e_nd)
+    print('AFTER SpMM kernel call')
     # NOTE(zihao): actually we can avoid the following step, because arg_*_nd
     # refers to the data that stores arg_*. After we call _CAPI_DGLKernelSpMM,
     # arg_* should have already been changed. But we found this doesn't work

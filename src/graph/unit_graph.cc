@@ -11,6 +11,9 @@
 #include "../c_api_common.h"
 #include "./unit_graph.h"
 
+// profiling
+#include "nvToolsExt.h"
+
 namespace dgl {
 
 namespace {
@@ -1260,6 +1263,43 @@ HeteroGraphPtr UnitGraph::CopyTo(HeteroGraphPtr g, const DLContext &ctx,
                          : nullptr;
     return HeteroGraphPtr(
         new UnitGraph(g->meta_graph(), new_incsr, new_outcsr, new_coo, bg->formats_));
+  }
+}
+
+void UnitGraph::Pin(HeteroGraphPtr g, const DLContext &ctx) {
+  auto bg = std::dynamic_pointer_cast<UnitGraph>(g);
+  CHECK_NOTNULL(bg);
+  dgl_type_t etype; // shouldn't matter?
+  bool transpose = false;
+  if (bg->in_csr_->defined()) {
+    CSRPtr p = bg->in_csr_; 
+    // for (const IdArray & arr: {p->adj_.indptr, p->adj_.indices, p->adj_.data}) {
+    // GetAdj should not copy.t
+    for (const IdArray & arr: p->GetAdj(etype, transpose, "csr")) {
+      DGLArrayHandle tensor = const_cast<DGLArrayHandle>(arr.operator->());
+      // CHECK(reinterpret_cast<DGLArrayHandle>(arr.data_) == tensor);
+      DGLArrayPinData(tensor, ctx);
+    }
+  }
+  if (bg->out_csr_->defined()) {
+    CSRPtr p = bg->out_csr_; 
+    // for (const IdArray & arr: {p->adj_.indptr, p->adj_.indices, p->adj_.data}) {
+    nvtxRangePushA("Pinning csr");
+    for (const IdArray & arr: p->GetAdj(etype, transpose, "csr")) {
+      DGLArrayHandle tensor = const_cast<DGLArrayHandle>(arr.operator->());
+      // CHECK(reinterpret_cast<DGLArrayHandle>(arr.data_) == tensor);
+      DGLArrayPinData(tensor, ctx);
+    }
+    nvtxRangePop();
+  }
+  if (bg->coo_->defined()) {
+    COOPtr p = bg->coo_; 
+    // for (const IdArray & arr: {p->adj_.row, p->adj_.col, p->adj_.data}) {
+    for (const IdArray & arr: p->GetAdj(etype, transpose, "coo")) {
+      DGLArrayHandle tensor = const_cast<DGLArrayHandle>(arr.operator->());
+      // CHECK(reinterpret_cast<DGLArrayHandle>(arr.data_) == tensor);
+      DGLArrayPinData(tensor, ctx);
+    }
   }
 }
 

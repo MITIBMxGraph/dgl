@@ -17,10 +17,27 @@
 #include <system_error>
 #include <thread>
 
-#include <semaphore.h>
-
+#include <semaphore.h> 
 // includes for nvtx profiling
 #include "nvToolsExt.h"
+
+// all includes in dgl/src/graph/transform/to_bipartite.cc
+// #include "to_bipartite.h"
+#include <dgl/base_heterograph.h>
+#include <dgl/transform.h>
+#include <dgl/array.h>
+#include <dgl/packed_func_ext.h>
+#include <dgl/immutable_graph.h>
+#include <dgl/runtime/registry.h>
+#include <dgl/runtime/container.h>
+#include <vector>
+#include <tuple>
+#include <utility>
+//#include "../../array/cpu/array_utils.h"
+// TODO: CLEANUP
+#include "/home/gridsan/pmurzynowski/dgl/src/array/cpu/array_utils.h"
+using namespace dgl::runtime;
+using namespace dgl::aten;
 
 
 struct MySemaphore {
@@ -111,6 +128,18 @@ ProtoSample multilayer_sample(
       pin_memory);
 }
 
+// Convert ProtoSample to DGLBlock
+std::tuple<dgl::HeteroGraphPtr, std::vector<dgl::IdArray>>
+toDGLBlock(ProtoSample proto) {
+  // testing
+  //printf("testing\n");
+  //const dgl::HeteroGraphPtr new_graph = nullptr;
+  const CSRMatrix csr_mat = 
+  const dgl::HeteroGraphPtr new_graph = CreateFromCSR(;
+  std::vector<dgl::IdArray> induced_edges;
+  return std::make_tuple(new_graph, induced_edges);
+}
+
 template <typename scalar_t>
 torch::Tensor serial_index_impl(
     torch::Tensor const in,
@@ -123,37 +152,16 @@ torch::Tensor serial_index_impl(
           (in.sizes().back() == 1),
       "input must be 2D row-major tensor");
 
-  // printf("create out\n");
   torch::Tensor out =
       torch::empty({n, f}, in.options().pinned_memory(pin_memory));
-  // printf("ptrs\n");
   auto inptr = in.data_ptr<scalar_t>();
   auto outptr = out.data_ptr<scalar_t>();
   auto idxptr = idx.data_ptr<int64_t>();
-
-  // printf("before slicing loop\n");
-  // printf("idx.numel(): %ld, n: %ld\n", idx.numel(), n);
-  // printf("in.numel(): %ld\n", in.numel());
-  // printf("out.numel(): %ld\n", out.numel());
-
   for (int64_t i = 0; i < std::min(idx.numel(), n); ++i) {
-    // printf("i: %ld\n", i); 
     const auto row = idxptr[i];
-    // printf("row created, row: %ld\n", row);
-    // printf("f: %ld\n", f);
-    // printf("*inptr: %lf\n", *inptr);
-    // printf("*outptr: %lf\n", *outptr);
-    // printf("inptr start: %ld, inptr numel: %ld, inptr end: %ld, row: %ld, f: %ld, inptr + row*f: %ld\n", inptr, in.numel(), inptr + in.numel(), row, f, inptr + row * f);
-    // printf("otptr start: %ld, otptr numel: %ld, otptr end: %ld, i  : %ld, f: %ld, otptr + i*f  : %ld\n", outptr, out.numel(), outptr + out.numel(), i, f, outptr + i*f);
-    // std::cout << in.type() << std::endl;
-    // std::cout << in.scalar_type() << std::endl;
-    // std::cout << in.options() << std::endl;
-    // std::cout << in.device() << std::endl;
     std::copy_n(inptr + row * f, f, outptr + i * f);
-    // printf("after copy\n");
   }
 
-  // printf("end of loop\n");
   return out;
 }
 
@@ -638,6 +646,9 @@ void fast_sampler_thread(FastSamplerSlot& slot) {
       // printf("Slicing y\n");
       y_s = serial_index(*config.y, n_id, this_batch_size, config.pin_memory);
     }
+    nvtxRangePop();
+    nvtxRangePushA("toDGLBlock");
+    toDGLBlock(proto);
     nvtxRangePop();
 
     // TODO: Implement limit on the size of the output queue,
