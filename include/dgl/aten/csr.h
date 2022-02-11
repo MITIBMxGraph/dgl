@@ -132,9 +132,13 @@ struct CSRMatrix {
   *       The context check is deferred to pinning the NDArray.
   */
   inline void PinMemory_() {
+    printf("CSRMatrix::PinMemory_ --\n");
+    printf("\t&indptr: %p\n", &indptr);
     indptr.PinMemory_();
+    printf("\t&indices: %p\n", &indices);
     indices.PinMemory_();
     if (!aten::IsNullArray(data)) {
+      printf("\t&data: %p\n", &data);
       data.PinMemory_();
     }
   }

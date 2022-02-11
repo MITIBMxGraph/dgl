@@ -127,7 +127,7 @@ class CUDADeviceAPI final : public DeviceAPI {
     } else if (ctx_from.device_type == kDLGPU && ctx_to.device_type == kDLCPU) {
       CUDA_CALL(cudaSetDevice(ctx_from.device_id));
       GPUCopy(from, to, size, cudaMemcpyDeviceToHost, cu_stream);
-    } else if (ctx_from.device_type == kDLCPU && ctx_to.device_type == kDLGPU) {
+    } else if ((ctx_from.device_type == kDLCPU || ctx_from.device_type == kDLCPUPinned) && ctx_to.device_type == kDLGPU) {
       CUDA_CALL(cudaSetDevice(ctx_to.device_id));
       GPUCopy(from, to, size, cudaMemcpyHostToDevice, cu_stream);
     } else {
@@ -180,9 +180,9 @@ class CUDADeviceAPI final : public DeviceAPI {
    *        not just the one that performed the allocation
    */
   void PinData(void* ptr, size_t nbytes) {
-    printf("%p, %llu\n", ptr, nbytes);
-    // CUDA_CALL(cudaHostRegister(ptr, nbytes, cudaHostRegisterDefault));
-    CUDA_CALL(cudaHostRegister(ptr, nbytes, cudaHostRegisterPortable));
+    printf("PinData -- ptr: %p, nbytes: %lu\n", ptr, nbytes);
+    CUDA_CALL(cudaHostRegister(ptr, nbytes, cudaHostRegisterDefault));
+    // CUDA_CALL(cudaHostRegister(ptr, nbytes, cudaHostRegisterPortable));
   }
 
   void UnpinData(void* ptr) {

@@ -77,8 +77,9 @@ class DevicePrefetcher(DeviceIterator):
                     #blocks_gpu = [block.to(device, non_blocking=True) for block in batch.blocks]
                     blocks_gpu = []
                     for block in batch.blocks:
-                        print(f'pinned: {block.is_pinned()}')
-                        #print(type(block))
+                        print(f'block pinned: {block.is_pinned()}')
+                        print(f'block device: {block.device}')
+                        print(type(block))
                         block.pin_memory_()
                         #assert block.is_pinned()
                         #blocks_gpu.append(block.pin_memory_().to(device, non_blocking=True))

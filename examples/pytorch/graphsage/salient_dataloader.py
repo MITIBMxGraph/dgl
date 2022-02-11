@@ -147,6 +147,10 @@ def run(args, device, data):
                                 #with th.autograd.profiler.emit_nvtx():
                                     #batch_pred = model(blocks, batch_inputs)
                                 batch_pred = model(batch.blocks, batch.x)
+                                with nvtx.annotate('unpinning'):
+                                    pass
+                                    # this doesn't make sense because pointing to gpu objects
+                                    #for block in batch.blocks: block.unpin_memory_()
                             with nvtx.annotate('loss'):
                                 #loss = loss_fcn(batch_pred, batch_labels)
                                 loss = loss_fcn(batch_pred, batch.y)
@@ -205,9 +209,9 @@ if __name__ == '__main__':
     argparser.add_argument('--num-hidden', type=int, default=16)
     argparser.add_argument('--num-layers', type=int, default=3)
     #argparser.add_argument('--fan-out', type=str, default='5,10,15')
-    argparser.add_argument('--fan-out', type=str, default='2,3,4')
+    argparser.add_argument('--fan-out', type=str, default='1,2,3')
     #argparser.add_argument('--batch-size', type=int, default=1024)
-    argparser.add_argument('--batch-size', type=int, default=4)
+    argparser.add_argument('--batch-size', type=int, default=2)
     argparser.add_argument('--log-every', type=int, default=20)
     argparser.add_argument('--eval-every', type=int, default=5)
     argparser.add_argument('--lr', type=float, default=0.003)

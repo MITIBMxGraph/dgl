@@ -139,8 +139,11 @@ inline SingleSample sample_adj(
 
   // output
   const auto n_col = n_id_map.size();
+  // printf("(should be on stack) n_col: %p\n", &n_col);
   auto out_rowptr = torch::empty(n_col + 1, rowptr.options().pinned_memory(pin_memory));
   const auto out_rowptr_data = out_rowptr.data_ptr<int64_t>();
+  // attempt with contiguous memory
+  // const auto out_rowptr_data = out_rowptr.contiguous().data_ptr<int64_t>();
   auto out_col = torch::empty(E, col.options().pinned_memory(pin_memory));
   const auto out_col_data = out_col.data_ptr<int64_t>();
   auto out_e_id = torch::empty(E, col.options().pinned_memory(pin_memory));
@@ -176,6 +179,11 @@ inline SingleSample sample_adj(
     out_rowptr_data[col] = last;
     last = temp;
   }
+  // DEBUG
+  // printf("out_rowptr: %p\n", out_rowptr);
+  // printf("&out_rowptr: %p\n", &out_rowptr);
+  // printf("out_rowptr_data: %p\n", out_rowptr_data);
+
   return std::make_tuple(
       std::move(out_rowptr),
       std::move(out_col),

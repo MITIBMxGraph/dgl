@@ -573,11 +573,14 @@ def create_block(data_dict, num_src_nodes=None, num_dst_nodes=None, idtype=None,
     metagraph = graph_index.from_coo(
         len(srctypes) + len(dsttypes), meta_edges_src, meta_edges_dst, True)
     # create graph index
+    print('Calling from: create_block')
     hgidx = heterograph_index.create_heterograph_from_relations(
         metagraph, [rgrh._graph for rgrh in rel_graphs], num_nodes_per_type)
     retg = DGLBlock(hgidx, (srctypes, dsttypes), etypes)
+    #retg = DGLHeteroGraph(hgidx, (srctypes, dsttypes), etypes)
 
-    return retg.to(device)
+    #return retg.to(device)
+    return retg
 
 def block_to_graph(block):
     """Convert a message flow graph (MFG) as a :class:`DGLBlock` object to a :class:`DGLGraph`.

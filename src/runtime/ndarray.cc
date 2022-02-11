@@ -255,6 +255,7 @@ void NDArray::CopyFromTo(DLTensor* from,
 
   CHECK(from->ctx.device_type == to->ctx.device_type
         || from->ctx.device_type == kDLCPU
+        || from->ctx.device_type == kDLCPUPinned
         || to->ctx.device_type == kDLCPU)
     << "Can not copy across different ctx types directly";
 

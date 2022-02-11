@@ -3,6 +3,7 @@ from dgl.base import DGLError
 #from dgl import backend as F
 import torch
 import pytest
+from dgl.heterograph import DGLBlock
 
 test_type = torch.int32
 
@@ -26,12 +27,25 @@ def create_test_heterograph(idtype):
     return g
 
 def test_pin_memory_(idtype):
+
     # TODO: rewrite this test case to accept different graphs so we
     #  can test reverse graph and batched graph
+
+    # default
     g = create_test_heterograph(idtype)
+    # not valid syntax, already a graph, doesn't take graph input
+    #g = DGLBlock(create_test_heterograph(idtype))
+    # convert
+    #g = dgl.to_block(create_test_heterograph(idtype))
+    print(type(g))
+    # get memory address
+    print(f'graph ptr: {hex(id(g))}')
+
     g.nodes['user'].data['h'] = torch.ones((3, 5), dtype=test_type)
     g.nodes['game'].data['i'] = torch.ones((2, 5), dtype=test_type)
     g.edges['plays'].data['e'] = torch.ones((4, 4), dtype=test_type)
+
+    # TODO: memory addresses of data
 
     g.nodes['user'].data['h'].device.type == 'cpu'
     g.nodes['game'].data['i'].device.type == 'cpu'
