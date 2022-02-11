@@ -461,6 +461,17 @@ int DGLArrayAllocSharedMem(const char *mem_name,
 
 int DGLArrayFree(DGLArrayHandle handle) {
   API_BEGIN();
+
+  // Unpin
+  auto* nd_container = reinterpret_cast<NDArray::Container*>(handle);
+  DLTensor* nd = &(nd_container->dl_tensor);
+  printf("======== Potentially Unpinning ==========\n");
+  printf("On device: %s\n", DeviceTypeCode2Str(nd->ctx.device_type));
+  if (nd->ctx.device_type == kDLCPUPinned) {
+    printf("*********** Unpinning *********\n");
+    DGLArrayUnpinData(nd, nd->ctx);
+  }
+
   reinterpret_cast<NDArray::Container*>(handle)->DecRef();
   API_END();
 }
