@@ -89,9 +89,9 @@ def run(args, device, data):
                 skip_nonfull_batch=False, pin_memory=True # debug pinned memory
             )
 
-    train_loader = FastSampler(40, 50, cfg)
+    #train_loader = FastSampler(40, 50, cfg)
     #train_loader = FastSampler(2, 50, cfg)
-    #train_loader = FastSampler(1, 50, cfg) # serial to debug
+    train_loader = FastSampler(1, 50, cfg) # serial to debug
 
     # Define model and optimizer
     model = SAGE(x_dim, args.num_hidden, n_classes, args.num_layers, F.relu, args.dropout)
@@ -204,10 +204,10 @@ if __name__ == '__main__':
     argparser.add_argument('--num-epochs', type=int, default=3)
     argparser.add_argument('--num-hidden', type=int, default=16)
     argparser.add_argument('--num-layers', type=int, default=3)
-    argparser.add_argument('--fan-out', type=str, default='5,10,15')
-    #argparser.add_argument('--fan-out', type=str, default='2,3,4')
-    argparser.add_argument('--batch-size', type=int, default=1024)
-    #argparser.add_argument('--batch-size', type=int, default=4)
+    #argparser.add_argument('--fan-out', type=str, default='5,10,15')
+    argparser.add_argument('--fan-out', type=str, default='2,3,4')
+    #argparser.add_argument('--batch-size', type=int, default=1024)
+    argparser.add_argument('--batch-size', type=int, default=4)
     argparser.add_argument('--log-every', type=int, default=20)
     argparser.add_argument('--eval-every', type=int, default=5)
     argparser.add_argument('--lr', type=float, default=0.003)

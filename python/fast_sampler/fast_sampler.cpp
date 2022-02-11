@@ -133,9 +133,9 @@ std::tuple<dgl::HeteroGraphPtr, std::vector<dgl::IdArray>>
 toDGLBlock(ProtoSample proto) {
   // testing
   //printf("testing\n");
-  //const dgl::HeteroGraphPtr new_graph = nullptr;
-  const CSRMatrix csr_mat = 
-  const dgl::HeteroGraphPtr new_graph = CreateFromCSR(;
+  const dgl::HeteroGraphPtr new_graph = nullptr;
+  // const CSRMatrix csr_mat = 
+  // const dgl::HeteroGraphPtr new_graph = CreateFromCSR(;
   std::vector<dgl::IdArray> induced_edges;
   return std::make_tuple(new_graph, induced_edges);
 }

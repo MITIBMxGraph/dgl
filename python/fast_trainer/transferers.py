@@ -28,7 +28,6 @@ class DevicePrefetcher(DeviceIterator):
 
         self.it = it
         self.streams = [torch.cuda.Stream(device) for device in devices]
-        self.transferers = [dgl.dataloading.AsyncTransferer(torch.device(device)) for device in devices]
 
         # clean up, device prefetcher should be generic and not have a specified return value
         # rv should be specified by the iterator
@@ -75,7 +74,15 @@ class DevicePrefetcher(DeviceIterator):
                 with torch.autograd.profiler.emit_nvtx():
                     #blocks_gpu = [block.int().to(device, non_blocking=False) for block in batch.blocks]
                     #blocks_gpu = [block.to(device, non_blocking=False) for block in batch.blocks]
-                    blocks_gpu = [block.to(device, non_blocking=True) for block in batch.blocks]
+                    #blocks_gpu = [block.to(device, non_blocking=True) for block in batch.blocks]
+                    blocks_gpu = []
+                    for block in batch.blocks:
+                        print(f'pinned: {block.is_pinned()}')
+                        #print(type(block))
+                        block.pin_memory_()
+                        #assert block.is_pinned()
+                        #blocks_gpu.append(block.pin_memory_().to(device, non_blocking=True))
+                        blocks_gpu.append(block.to(device, non_blocking=True))
             #with nvtx.annotate('just after async', color='red'):
             #    print('just after async transfer call!')
                 #[print(block.device) for block in blocks_gpu]

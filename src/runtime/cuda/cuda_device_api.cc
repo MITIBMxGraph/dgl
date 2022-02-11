@@ -180,7 +180,9 @@ class CUDADeviceAPI final : public DeviceAPI {
    *        not just the one that performed the allocation
    */
   void PinData(void* ptr, size_t nbytes) {
-    CUDA_CALL(cudaHostRegister(ptr, nbytes, cudaHostRegisterDefault));
+    printf("%p, %llu\n", ptr, nbytes);
+    // CUDA_CALL(cudaHostRegister(ptr, nbytes, cudaHostRegisterDefault));
+    CUDA_CALL(cudaHostRegister(ptr, nbytes, cudaHostRegisterPortable));
   }
 
   void UnpinData(void* ptr) {

@@ -172,7 +172,7 @@ class HeteroGraphIndex(ObjectBase):
     def ctx(self):
         """Return the context of this graph index.
 
-        Returns
+      Returns
         -------
         DGLContext
             The context of the graph.
