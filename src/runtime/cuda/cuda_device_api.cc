@@ -3,6 +3,9 @@
  * \file cuda_device_api.cc
  * \brief GPU specific API
  */
+#include <cstdint>
+#include <inttypes.h>
+
 #include <dgl/runtime/device_api.h>
 
 #include <dmlc/thread_local.h>
@@ -180,7 +183,22 @@ class CUDADeviceAPI final : public DeviceAPI {
    *        not just the one that performed the allocation
    */
   void PinData(void* ptr, size_t nbytes) {
-    printf("PinData -- ptr: %p, nbytes: %lu\n", ptr, nbytes);
+    //printf("PinData -- ptr: %p, nbytes: %lu\n", ptr, nbytes);
+    /*
+    printf("\t32bit printout: ");
+    for (int i = 0; i < (nbytes + 3)/4; i++) {
+      printf("%d, ", *((int*)ptr+i));
+    }
+    printf("\n");
+    */
+    /*
+    printf("\t64bit printout: ");
+    for (int i = 0; i < (nbytes + 7)/8; i++) {
+      //printf("%ld, ", *((int64_t*)ptr+i));
+      printf("%" PRId64 ", ", *(((int64_t*)ptr)+i));
+    }
+    printf("\n");
+    */
     CUDA_CALL(cudaHostRegister(ptr, nbytes, cudaHostRegisterDefault));
     // CUDA_CALL(cudaHostRegister(ptr, nbytes, cudaHostRegisterPortable));
   }

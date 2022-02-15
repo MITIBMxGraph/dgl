@@ -5,7 +5,7 @@ import torch
 import pytest
 from dgl.heterograph import DGLBlock
 
-test_type = torch.int32
+test_type = torch.int64
 
 def create_test_heterograph(idtype):
     # test heterograph from the docstring, plus a user -- wishes -- game relation

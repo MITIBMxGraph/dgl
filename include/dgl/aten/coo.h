@@ -139,13 +139,9 @@ struct COOMatrix {
   *       The context check is deferred to pinning the NDArray.
   */
   inline void PinMemory_() {
-    printf("COOMatrix::PinMemory_ --\n");
-    printf("\t&row: %p\n", &row);
     row.PinMemory_();
-    printf("\t&col: %p\n", &col);
     col.PinMemory_();
     if (!aten::IsNullArray(data)) {
-      printf("\t&data: %p\n", &data);
       data.PinMemory_();
     }
   }

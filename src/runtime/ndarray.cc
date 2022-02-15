@@ -79,6 +79,11 @@ struct NDArray::Internal {
   // frameworks that are DLPack compatible
   static void DLPackDeleter(NDArray::Container* ptr) {
     DLManagedTensor* tensor = static_cast<DLManagedTensor*>(ptr->manager_ctx);
+    // if the array is still pinned before freeing, unpin it.
+    // NOTE: currently used for development / testing only
+    if (ptr->dl_tensor.ctx.device_type == kDLCPUPinned) {
+      UnpinData(&(ptr->dl_tensor));
+    }
     if (tensor->deleter != nullptr) {
       (*tensor->deleter)(tensor);
     }
@@ -461,17 +466,6 @@ int DGLArrayAllocSharedMem(const char *mem_name,
 
 int DGLArrayFree(DGLArrayHandle handle) {
   API_BEGIN();
-
-  // Unpin
-  auto* nd_container = reinterpret_cast<NDArray::Container*>(handle);
-  DLTensor* nd = &(nd_container->dl_tensor);
-  printf("======== Potentially Unpinning ==========\n");
-  printf("On device: %s\n", DeviceTypeCode2Str(nd->ctx.device_type));
-  if (nd->ctx.device_type == kDLCPUPinned) {
-    printf("*********** Unpinning *********\n");
-    DGLArrayUnpinData(nd, nd->ctx);
-  }
-
   reinterpret_cast<NDArray::Container*>(handle)->DecRef();
   API_END();
 }

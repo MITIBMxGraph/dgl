@@ -32,16 +32,19 @@ def Adj__from_fast_sampler(adj) -> Adj:
 
 @nvtx.annotate('adj to Block', color='cyan')
 def Block__from_fast_sampler(adj) -> DGLBlock:
-    print('Block__from_fast_sampler')
+    #print('Block__from_fast_sampler')
     rowptr, col, edge_ids, sparse_sizes = adj
     # BUG: cloning here because the torch tensors allocated in fast sampler might be on the stack ://
     rowptr, col, edge_ids = torch.clone(rowptr), torch.clone(col), torch.clone(edge_ids)
-    print(f'rowptr adr: {hex(id(rowptr))}')
-    print(f'rowptr type: {type(rowptr)}')
-    print(f'rowptr dtype: {rowptr.dtype}')
-    print(f'rowptr numel: {rowptr.numel()}')
-    print(f'rowptr is_pinned: {rowptr.is_pinned()}')
-    print(f'rowptr device: {rowptr.device}')
+    #print(f'rowptr adr: {hex(id(rowptr))}')
+    #print(f'rowptr type: {type(rowptr)}')
+    #print(f'rowptr dtype: {rowptr.dtype}')
+    #print(f'rowptr numel: {rowptr.numel()}')
+    #print(f'rowptr is_pinned: {rowptr.is_pinned()}')
+    #print(f'rowptr device: {rowptr.device}')
+    #print(f'rowptr: {rowptr}')
+    #print(f'col: {col}')
+    #print(f'edge_ids: {edge_ids}')
     # for dgl no longer need to create Adj and SparseTensor
     with nvtx.annotate('adj to Block MFG conversion'):
         #with nvtx.annotate('adj extract csr'):
@@ -54,8 +57,10 @@ def Block__from_fast_sampler(adj) -> DGLBlock:
                                      #num_dst_nodes=sparse_sizes[1], device=torch.device('cpu'))
         with nvtx.annotate('_node_frames _ID torch.arange()'):
             # pass in a flag if should pin?
-            block._node_frames[0]['_ID'] = torch.arange(block.number_of_src_nodes()).pin_memory()
-            block._node_frames[1]['_ID'] = torch.arange(block.number_of_dst_nodes()).pin_memory()
+            #block._node_frames[0]['_ID'] = torch.arange(block.number_of_src_nodes()).pin_memory()
+            #block._node_frames[1]['_ID'] = torch.arange(block.number_of_dst_nodes()).pin_memory()
+            block._node_frames[0]['_ID'] = torch.arange(block.number_of_src_nodes())
+            block._node_frames[1]['_ID'] = torch.arange(block.number_of_dst_nodes())
     # DEBUG, make sure all component tensors are in pinned memory:
     # 1. Check graph structure
     # 2. check features (are features empty here? Or is this an extra copy of features!?)
@@ -72,6 +77,8 @@ def Block__from_fast_sampler(adj) -> DGLBlock:
         print(nframe.is_pinned())
     # 3. check misc info
     """
+    with nvtx.annotate("pinning", color="green"):
+        block.pin_memory_()
     return block
 
 

@@ -163,7 +163,6 @@ class UnitGraph::COO : public BaseHeteroGraph {
 
   /*! \brief Pin the adj_: COOMatrix of the COO graph. */
   void PinMemory_() {
-    printf("COO::PinMemory -- &adj_: %p\n", &adj_);
     adj_.PinMemory_();
   }
 
@@ -569,7 +568,6 @@ class UnitGraph::CSR : public BaseHeteroGraph {
 
   /*! \brief Pin the adj_: CSRMatrix of the CSR graph. */
   void PinMemory_() {
-    printf("CSR::PinMemory -- &adj_: %p\n", &adj_);
     adj_.PinMemory_();
   }
 
@@ -1299,17 +1297,13 @@ HeteroGraphPtr UnitGraph::CopyTo(HeteroGraphPtr g, const DLContext &ctx,
 }
 
 void UnitGraph::PinMemory_() {
-  printf("UnitGraph::PinMemory_\n");
   if (this->in_csr_->defined()) {
-    printf("\tin_csr_\n");
     this->in_csr_->PinMemory_();
   }
   if (this->out_csr_->defined()) {
-    printf("\tout_csr_\n");
     this->out_csr_->PinMemory_();
   }
   if (this->coo_->defined()) {
-    printf("\tcoo_\n");
     this->coo_->PinMemory_();
   }
 }

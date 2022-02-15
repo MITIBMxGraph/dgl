@@ -80,7 +80,6 @@ DGL_REGISTER_GLOBAL("heterograph_index._CAPI_DGLHeteroCreateHeteroGraph")
       rel_ptrs.push_back(ref.sptr());
     }
     auto hgptr = CreateHeteroGraph(meta_graph.sptr(), rel_ptrs);
-    printf("_CAPI_DGLHeteroCreateHeteroGraph -- hgptr: %p\n", hgptr);
     *rv = HeteroGraphRef(hgptr);
   });
 
@@ -96,7 +95,6 @@ DGL_REGISTER_GLOBAL("heterograph_index._CAPI_DGLHeteroCreateHeteroGraphWithNumNo
     }
     auto hgptr = CreateHeteroGraph(
         meta_graph.sptr(), rel_ptrs, num_nodes_per_type.ToVector<int64_t>());
-    printf("_CAPI_DGLHeteroCreateHeteroGraphWithNumNodes -- hgptr: %p\n", hgptr);
     *rv = HeteroGraphRef(hgptr);
   });
 
@@ -491,7 +489,6 @@ DGL_REGISTER_GLOBAL("heterograph_index._CAPI_DGLHeteroPinMemory_")
 .set_body([] (DGLArgs args, DGLRetValue* rv) {
     HeteroGraphRef hg = args[0];
     auto hgindex = std::dynamic_pointer_cast<HeteroGraph>(hg.sptr());
-    printf("_CAPI_DGLHeteroPinMemory_ -- hgindex: %p\n", hgindex);
     hgindex->PinMemory_();
     *rv = hg;
   });
