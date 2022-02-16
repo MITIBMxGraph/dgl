@@ -119,13 +119,11 @@ class PreparedBatch(NamedTuple):
 
     @classmethod
     def from_fast_sampler(cls, prepared_sample):
-        x, y, adjs, (start, stop) = prepared_sample
+        x, y, blocks, (start, stop) = prepared_sample
         return cls(
             x=x,
             y=y.squeeze() if y is not None else None,
-            #blocks=[Block__from_fast_sampler(adj) for adj in adjs],
-            # now creating blocks directly in fast_sampler
-            blocks=adjs,
+            blocks=[DGLBlock(graph_index) for graph_index in blocks],
             idx_range=slice(start, stop)
         )
 

@@ -87,7 +87,7 @@ struct MySemaphore {
 
 using Blocks = std::vector<dgl::HeteroGraphRef>;
 using ProtoSample = std::pair<torch::Tensor, Blocks>;
-using PreparedSample std::tuple<torch::Tensor, std::optional<torch::Tensor>, Blocks, std::pair<int32_t, int32_t>>; 
+using PreparedSample = std::tuple<torch::Tensor, std::optional<torch::Tensor>, Blocks, std::pair<int32_t, int32_t>>; 
 
 
 // Only sampling function that is guaranteed to be up to date
@@ -117,7 +117,7 @@ ProtoSample multilayer_sample(
     auto hgptr = dgl::CreateFromCSR(nvtypes, num_src, num_dst,
                                     std::move(out_rowptr), std::move(out_col), std::move(out_e_id),
                                     code); 
-    auto rel_graph = dgl::HeteroGraphRef(hgptr)
+    auto rel_graph = dgl::HeteroGraphRef(hgptr);
 
     // create metagraph
     constexpr DLContext ctx = DLContext{kDLCPU, 0};
@@ -127,22 +127,22 @@ ProtoSample multilayer_sample(
     // src_ids contains node 0 of metagraph
     const int64_t num_src_ids = 1;
     dgl::IdArray src_ids = dgl::aten::NewIdArray(num_src_ids, ctx, nbits);
-    src_ids.Ptr<int64_t>[0] = 0;
+    src_ids.Ptr<int64_t>()[0] = 0;
     // dst_ids contains node 1 of metagraph
     const int64_t num_dst_ids = 1;
     dgl::IdArray dst_ids = dgl::aten::NewIdArray(num_dst_ids, ctx, nbits);
-    dst_ids.Ptr<int64_t>[0] = 1;
+    dst_ids.Ptr<int64_t>()[0] = 1;
     // making readonly, so immutable
     auto metagraph = dgl::GraphRef(dgl::ImmutableGraph::CreateFromCOO(num_nodes, src_ids, dst_ids));
 
     // combine relation graph with metagraph
     // only have on relation graph and most simple metagraph
     std::vector<int64_t> num_nodes_per_type = {num_src, num_dst};
-    std::vector<HeteroGraphPtr> rel_ptrs = {rel_graph.sptr()};
-    auto hgptr = CreateHeteroGraph(metagraph.sptr(), rel_ptrs, num_nodes_per_type);
-    auto graph_index = HeteroGraphRef(hgptr);
+    std::vector<dgl::HeteroGraphPtr> rel_ptrs = {rel_graph.sptr()};
+    auto out_hgptr = CreateHeteroGraph(metagraph.sptr(), rel_ptrs, num_nodes_per_type);
+    auto out_graph_index = dgl::HeteroGraphRef(out_hgptr);
 
-    blocks.emplace_back(graph_index);
+    blocks.emplace_back(out_graph_index);
   }
 
   std::reverse(blocks.begin(), blocks.end());

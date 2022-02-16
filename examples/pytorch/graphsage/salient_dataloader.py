@@ -152,12 +152,7 @@ def run(args, device, data):
                                 #with th.autograd.profiler.emit_nvtx():
                                     #batch_pred = model(blocks, batch_inputs)
                                 batch_pred = model(batch.blocks, batch.x)
-                                with nvtx.annotate('unpinning'):
-                                    pass
-                                    # this doesn't make sense because pointing to gpu objects
-                                    #for block in batch.blocks: block.unpin_memory_()
                             with nvtx.annotate('loss'):
-                                #loss = loss_fcn(batch_pred, batch_labels)
                                 loss = loss_fcn(batch_pred, batch.y)
                         with nvtx.annotate('zero_grad'):
                             optimizer.zero_grad()
