@@ -13,6 +13,9 @@
 #include <cuda_runtime.h>
 #include "cuda_common.h"
 
+// profiling
+#include "nvToolsExt.h"
+
 namespace dgl {
 namespace runtime {
 
@@ -204,7 +207,9 @@ class CUDADeviceAPI final : public DeviceAPI {
   }
 
   void UnpinData(void* ptr) {
+    nvtxRangePushA("unpinning");
     CUDA_CALL(cudaHostUnregister(ptr));
+    nvtxRangePop();
   }
 
   void* AllocWorkspace(DGLContext ctx, size_t size, DGLType type_hint) final {

@@ -82,6 +82,8 @@ class DevicePrefetcher(DeviceIterator):
                         #print(type(block))
                         #assert block.is_pinned()
                         #blocks_gpu.append(block.pin_memory_().to(device, non_blocking=True))
+                        #blocks_gpu.append(block.to(device, non_blocking=False))
+                       # blocks_gpu.append(block.to(device, non_blocking=True, stream=stream))
                         blocks_gpu.append(block.to(device, non_blocking=True))
             #with nvtx.annotate('just after async', color='red'):
             #    print('just after async transfer call!')

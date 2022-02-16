@@ -57,10 +57,10 @@ def Block__from_fast_sampler(adj) -> DGLBlock:
                                      #num_dst_nodes=sparse_sizes[1], device=torch.device('cpu'))
         with nvtx.annotate('_node_frames _ID torch.arange()'):
             # pass in a flag if should pin?
-            #block._node_frames[0]['_ID'] = torch.arange(block.number_of_src_nodes()).pin_memory()
-            #block._node_frames[1]['_ID'] = torch.arange(block.number_of_dst_nodes()).pin_memory()
-            block._node_frames[0]['_ID'] = torch.arange(block.number_of_src_nodes())
-            block._node_frames[1]['_ID'] = torch.arange(block.number_of_dst_nodes())
+            block._node_frames[0]['_ID'] = torch.arange(block.number_of_src_nodes()).pin_memory()
+            block._node_frames[1]['_ID'] = torch.arange(block.number_of_dst_nodes()).pin_memory()
+            #block._node_frames[0]['_ID'] = torch.arange(block.number_of_src_nodes())
+            #block._node_frames[1]['_ID'] = torch.arange(block.number_of_dst_nodes())
     # DEBUG, make sure all component tensors are in pinned memory:
     # 1. Check graph structure
     # 2. check features (are features empty here? Or is this an extra copy of features!?)
@@ -123,7 +123,9 @@ class PreparedBatch(NamedTuple):
         return cls(
             x=x,
             y=y.squeeze() if y is not None else None,
-            blocks=[Block__from_fast_sampler(adj) for adj in adjs],
+            #blocks=[Block__from_fast_sampler(adj) for adj in adjs],
+            # now creating blocks directly in fast_sampler
+            blocks=adjs,
             idx_range=slice(start, stop)
         )
 

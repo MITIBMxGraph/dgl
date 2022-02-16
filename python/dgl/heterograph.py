@@ -5427,16 +5427,21 @@ class DGLHeteroGraph(object):
         if device is None or self.device == device:
             return self
 
-        with nvtx.annotate('copy self', color='black'):
-            ret = copy.copy(self)
+        #with nvtx.annotate('copy self', color='black'):
+        #    ret = copy.copy(self)
+        ret = self
 
         # 1. Copy graph structure
         with nvtx.annotate('copy graph structure', color='orange'):
             ret._graph = self._graph.copy_to(utils.to_dgl_context(device))
 
+        """
         # 2. Copy features
         # TODO(minjie): handle initializer
         with nvtx.annotate('copy features', color='yellow'):
+            # Note: Needs cleanup, this will only work for torch backend
+            #import torch
+            #with torch.cuda.stream(kwargs.pop('stream')):
             new_nframes = []
             for nframe in self._node_frames:
                 new_nframes.append(nframe.to(device, **kwargs))
@@ -5448,6 +5453,8 @@ class DGLHeteroGraph(object):
             ret._edge_frames = new_eframes
 
         # 2. Copy misc info
+        # Shouldn't need to pin this info?
+        # atm this is None, can cleanup later
         with nvtx.annotate('copy misc info', color='green'):
             if self._batch_num_nodes is not None:
                 new_bnn = {k : F.copy_to(num, device, **kwargs)
@@ -5457,6 +5464,7 @@ class DGLHeteroGraph(object):
                 new_bne = {k : F.copy_to(num, device, **kwargs)
                            for k, num in self._batch_num_edges.items()}
                 ret._batch_num_edges = new_bne
+        """
 
         return ret
 
