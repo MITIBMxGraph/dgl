@@ -1,8 +1,10 @@
 import dgl
+# note backend must be torch, untested otherwise
+from dgl import backend as F
 import numpy as np
 import torch as th
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as Func
 import torch.optim as optim
 import dgl.nn.pytorch as dglnn
 import time
@@ -84,6 +86,9 @@ def run(args, device, data):
                 x=x, y=y.unsqueeze(-1),
                 rowptr=rowptr, col=col,
                 idx=train_nid,
+                # inputting dgl arrays, likely unnecessary
+                #rowptr=F.to_dgl_nd(rowptr), col=F.to_dgl_nd(col),
+                #idx=F.to_dgl_nd(train_nid),
                 batch_size=args.batch_size, sizes=salient__fanout,
                 #skip_nonfull_batch=False, pin_memory=True
                 skip_nonfull_batch=False, pin_memory=True # debug pinned memory
@@ -94,7 +99,7 @@ def run(args, device, data):
     #train_loader = FastSampler(1, 50, cfg) # serial to debug
 
     # Define model and optimizer
-    model = SAGE(x_dim, args.num_hidden, n_classes, args.num_layers, F.relu, args.dropout)
+    model = SAGE(x_dim, args.num_hidden, n_classes, args.num_layers, Func.relu, args.dropout)
     #model = model.half().to(device)
     model = model.to(device)
     loss_fcn = nn.CrossEntropyLoss()

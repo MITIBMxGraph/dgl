@@ -77,16 +77,20 @@ struct MySemaphore {
 #include "sample_cpu.hpp"
 #include "utils.hpp"
 
-using Adjs = std::vector<std::tuple<
-    torch::Tensor,
-    torch::Tensor,
-    torch::Tensor,
-    std::pair<int64_t, int64_t>>>;
-using ProtoSample = std::pair<torch::Tensor, Adjs>;
-using PreparedSample = std::tuple<torch::Tensor, std::optional<torch::Tensor>, Adjs, std::pair<int32_t, int32_t>>;
+//using Adjs = std::vector<std::tuple<
+//    torch::Tensor,
+//    torch::Tensor,
+//    torch::Tensor,
+//    std::pair<int64_t, int64_t>>>;
+//using ProtoSample = std::pair<torch::Tensor, Adjs>;
+//using PreparedSample = std::tuple<torch::Tensor, std::optional<torch::Tensor>, Adjs, std::pair<int32_t, int32_t>>;
+
+using Blocks = std::vector<dgl::HeteroGraphRef>;
+using ProtoSample = std::pair<torch::Tensor, Blocks>;
+using PreparedSample std::tuple<torch::Tensor, std::optional<torch::Tensor>, Blocks, std::pair<int32_t, int32_t>>; 
 
 
-
+// Only sampling function that is guaranteed to be up to date
 ProtoSample multilayer_sample(
     std::vector<int64_t> n_ids,
     std::vector<int64_t> const& sizes,
@@ -94,23 +98,55 @@ ProtoSample multilayer_sample(
     torch::Tensor col,
     bool pin_memory = false) {
   auto n_id_map = get_initial_sample_adj_hash_map(n_ids);
-  Adjs adjs;
-  adjs.reserve(sizes.size());
+  Blocks blocks;
+  blocks.reserve(sizes.size());
   for (auto size : sizes) {
     auto const subset_size = n_ids.size();
-    torch::Tensor out_rowptr, out_col, out_e_id;
+    //torch::Tensor out_rowptr, out_col, out_e_id;
+    dgl::IdArray out_rowptr, out_col, out_e_id;
+
+    // sample_adj outputs a relation graph
+    // for all intents and purposes this is the MFG for that layer
     std::tie(out_rowptr, out_col, n_ids, out_e_id) = sample_adj(
         rowptr, col, std::move(n_ids), n_id_map, size, false, pin_memory);
-    adjs.emplace_back(
-        std::move(out_rowptr),
-        std::move(out_col),
-        std::move(out_e_id),
-        //std::make_pair(subset_size, n_ids.size()));
-        std::make_pair(n_ids.size(), subset_size));
+    const int64_t nvtypes = 1;
+    const int64_t num_src = subset_size;
+    const int64_t num_dst = n_ids.size();
+    std::vector<dgl::SparseFormat> formats_vec = {dgl::ParseSparseFormat("csr")};
+    const auto code = SparseFormatsToCode(formats_vec);
+    auto hgptr = dgl::CreateFromCSR(nvtypes, num_src, num_dst,
+                                    std::move(out_rowptr), std::move(out_col), std::move(out_e_id),
+                                    code); 
+    auto rel_graph = dgl::HeteroGraphRef(hgptr)
+
+    // create metagraph
+    constexpr DLContext ctx = DLContext{kDLCPU, 0};
+    const uint8_t nbits = 64;
+    // currently suming one type of relation graph, so the meta graph has only two nodes
+    const int64_t num_nodes = 2;
+    // src_ids contains node 0 of metagraph
+    const int64_t num_src_ids = 1;
+    dgl::IdArray src_ids = dgl::aten::NewIdArray(num_src_ids, ctx, nbits);
+    src_ids.Ptr<int64_t>[0] = 0;
+    // dst_ids contains node 1 of metagraph
+    const int64_t num_dst_ids = 1;
+    dgl::IdArray dst_ids = dgl::aten::NewIdArray(num_dst_ids, ctx, nbits);
+    dst_ids.Ptr<int64_t>[0] = 1;
+    // making readonly, so immutable
+    auto metagraph = dgl::GraphRef(dgl::ImmutableGraph::CreateFromCOO(num_nodes, src_ids, dst_ids));
+
+    // combine relation graph with metagraph
+    // only have on relation graph and most simple metagraph
+    std::vector<int64_t> num_nodes_per_type = {num_src, num_dst};
+    std::vector<HeteroGraphPtr> rel_ptrs = {rel_graph.sptr()};
+    auto hgptr = CreateHeteroGraph(metagraph.sptr(), rel_ptrs, num_nodes_per_type);
+    auto graph_index = HeteroGraphRef(hgptr);
+
+    blocks.emplace_back(graph_index);
   }
 
-  std::reverse(adjs.begin(), adjs.end());
-  return {vector_to_tensor(n_ids), std::move(adjs)};
+  std::reverse(blocks.begin(), blocks.end());
+  return {vector_to_tensor(n_ids), std::move(blocks)};
 }
 
 ProtoSample multilayer_sample(
