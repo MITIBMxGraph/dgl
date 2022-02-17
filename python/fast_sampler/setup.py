@@ -34,14 +34,28 @@ def get_extensions():
 
     include_dirs = [ROOT_PATH, ROOT_PATH.joinpath('parallel-hashmap'),
     # hacked-in dgl include
-        '/home/gridsan/pmurzynowski/dgl/include/',
+        '/home/gridsan/pmurzynowski/dgl/third_party/dlpack/include',
         '/home/gridsan/pmurzynowski/dgl/third_party/dmlc-core/include',
-        '/home/gridsan/pmurzynowski/dgl/third_party/dlpack/include']
+        '/home/gridsan/pmurzynowski/dgl/include/',
+        '/home/gridsan/pmurzynowski/dgl/src/']
+
+    # get all dgl cc files, hacky
+    dgl_src_files = []
+    for r, d, f in os.walk('/home/gridsan/pmurzynowski/dgl/src/'):
+        for file in f:
+            if '.cc' in file:
+                dgl_src_files.append(os.path.join(r, file))
 
     return [
         CppExtension(
             'fast_sampler',
-            ['fast_sampler.cpp'],
+            ['fast_sampler.cpp'] + dgl_src_files,
+            #[
+            #    'fast_sampler.cpp',
+            #    '/home/gridsan/pmurzynowski/dgl/src/array/array.cc',
+            #    '/home/gridsan/pmurzynowski/dgl/src/runtime/c_object_api.cc',
+            #    '/home/gridsan/pmurzynowski/dgl/src/runtime/object.cc'
+            #],
             include_dirs=include_dirs,
             define_macros=define_macros,
             extra_compile_args=extra_compile_args,

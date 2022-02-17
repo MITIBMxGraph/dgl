@@ -8,6 +8,36 @@
 #include "parallel_hashmap/phmap.h"
 #include "utils.hpp"
 
+// includes for nvtx profiling
+#include "nvToolsExt.h"
+
+// likley too many includes here, were needed for development
+#include <dgl/base_heterograph.h>
+#include <dgl/transform.h>
+#include <dgl/array.h>
+#include <dgl/runtime/ndarray.h>
+#include <dgl/packed_func_ext.h>
+#include <dgl/immutable_graph.h>
+#include <dgl/runtime/registry.h>
+#include <dgl/runtime/container.h>
+#include <dgl/runtime/object.h>
+#include <dgl/runtime/c_runtime_api.h>
+#include <dgl/aten/array_ops.h>
+
+// just inluced the rest ha
+#include <dgl/aten/coo.h>
+#include <dgl/aten/csr.h>
+#include <dgl/aten/macro.h>
+#include <dgl/aten/spmat.h>
+#include <dgl/aten/types.h>
+
+#include <vector>
+#include <tuple>
+#include <utility>
+//#include "../../array/cpu/array_utils.h"
+// TODO: CLEANUP
+#include "/home/gridsan/pmurzynowski/dgl/src/array/cpu/array_utils.h"
+
 thread_local std::mt19937 gen;
 
 inline auto get_initial_sample_adj_hash_map(const std::vector<int64_t>& n_ids) {

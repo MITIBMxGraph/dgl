@@ -21,15 +21,26 @@
 // includes for nvtx profiling
 #include "nvToolsExt.h"
 
-// all includes in dgl/src/graph/transform/to_bipartite.cc
-// #include "to_bipartite.h"
+// likley too many includes here, were needed for development
 #include <dgl/base_heterograph.h>
 #include <dgl/transform.h>
 #include <dgl/array.h>
+#include <dgl/runtime/ndarray.h>
 #include <dgl/packed_func_ext.h>
 #include <dgl/immutable_graph.h>
 #include <dgl/runtime/registry.h>
 #include <dgl/runtime/container.h>
+#include <dgl/runtime/object.h>
+#include <dgl/runtime/c_runtime_api.h>
+#include <dgl/aten/array_ops.h>
+
+// just inluced the rest ha
+#include <dgl/aten/coo.h>
+#include <dgl/aten/csr.h>
+#include <dgl/aten/macro.h>
+#include <dgl/aten/spmat.h>
+#include <dgl/aten/types.h>
+
 #include <vector>
 #include <tuple>
 #include <utility>
@@ -164,6 +175,7 @@ ProtoSample multilayer_sample(
       pin_memory);
 }
 
+/*
 // Convert ProtoSample to DGLBlock
 std::tuple<dgl::HeteroGraphPtr, std::vector<dgl::IdArray>>
 toDGLBlock(ProtoSample proto) {
@@ -175,6 +187,7 @@ toDGLBlock(ProtoSample proto) {
   std::vector<dgl::IdArray> induced_edges;
   return std::make_tuple(new_graph, induced_edges);
 }
+*/
 
 template <typename scalar_t>
 torch::Tensor serial_index_impl(
@@ -682,9 +695,6 @@ void fast_sampler_thread(FastSamplerSlot& slot) {
       // printf("Slicing y\n");
       y_s = serial_index(*config.y, n_id, this_batch_size, config.pin_memory);
     }
-    nvtxRangePop();
-    nvtxRangePushA("toDGLBlock");
-    toDGLBlock(proto);
     nvtxRangePop();
 
     // TODO: Implement limit on the size of the output queue,

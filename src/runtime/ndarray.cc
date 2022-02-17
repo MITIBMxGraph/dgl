@@ -80,7 +80,6 @@ struct NDArray::Internal {
   static void DLPackDeleter(NDArray::Container* ptr) {
     DLManagedTensor* tensor = static_cast<DLManagedTensor*>(ptr->manager_ctx);
     // if the array is still pinned before freeing, unpin it.
-    // NOTE: currently used for development / testing only
     if (ptr->dl_tensor.ctx.device_type == kDLCPUPinned) {
       UnpinData(&(ptr->dl_tensor));
     }
