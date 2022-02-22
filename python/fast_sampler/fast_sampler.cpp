@@ -47,6 +47,7 @@
 //#include "../../array/cpu/array_utils.h"
 // TODO: CLEANUP
 #include "/home/gridsan/pmurzynowski/dgl/src/array/cpu/array_utils.h"
+#include "/home/gridsan/pmurzynowski/dgl/src/graph/heterograph.h"
 using namespace dgl::runtime;
 using namespace dgl::aten;
 
@@ -96,7 +97,8 @@ struct MySemaphore {
 //using ProtoSample = std::pair<torch::Tensor, Adjs>;
 //using PreparedSample = std::tuple<torch::Tensor, std::optional<torch::Tensor>, Adjs, std::pair<int32_t, int32_t>>;
 
-using Blocks = std::vector<dgl::HeteroGraphRef>;
+// using Blocks = std::vector<dgl::HeteroGraphRef>;
+using Blocks = std::vector<dgl::runtime::DGLRetValue*>;
 using ProtoSample = std::pair<torch::Tensor, Blocks>;
 using PreparedSample = std::tuple<torch::Tensor, std::optional<torch::Tensor>, Blocks, std::pair<int32_t, int32_t>>; 
 
@@ -120,9 +122,10 @@ ProtoSample multilayer_sample(
     // for all intents and purposes this is the MFG for that layer
     std::tie(out_rowptr, out_col, n_ids, out_e_id) = sample_adj(
         rowptr, col, std::move(n_ids), n_id_map, size, false, pin_memory);
-    const int64_t nvtypes = 1;
-    const int64_t num_src = subset_size;
-    const int64_t num_dst = n_ids.size();
+    // 'SRC/_N' and 'DST/_N'
+    const int64_t nvtypes = 2;
+    const int64_t num_dst = subset_size;
+    const int64_t num_src = n_ids.size();
     std::vector<dgl::SparseFormat> formats_vec = {dgl::ParseSparseFormat("csr")};
     const auto code = SparseFormatsToCode(formats_vec);
     auto hgptr = dgl::CreateFromCSR(nvtypes, num_src, num_dst,
@@ -153,7 +156,7 @@ ProtoSample multilayer_sample(
     auto out_hgptr = CreateHeteroGraph(metagraph.sptr(), rel_ptrs, num_nodes_per_type);
     auto out_graph_index = dgl::HeteroGraphRef(out_hgptr);
 
-    blocks.emplace_back(out_graph_index);
+    blocks.emplace_back(&out_graph_index);
   }
 
   std::reverse(blocks.begin(), blocks.end());
@@ -175,19 +178,6 @@ ProtoSample multilayer_sample(
       pin_memory);
 }
 
-/*
-// Convert ProtoSample to DGLBlock
-std::tuple<dgl::HeteroGraphPtr, std::vector<dgl::IdArray>>
-toDGLBlock(ProtoSample proto) {
-  // testing
-  //printf("testing\n");
-  const dgl::HeteroGraphPtr new_graph = nullptr;
-  // const CSRMatrix csr_mat = 
-  // const dgl::HeteroGraphPtr new_graph = CreateFromCSR(;
-  std::vector<dgl::IdArray> induced_edges;
-  return std::make_tuple(new_graph, induced_edges);
-}
-*/
 
 template <typename scalar_t>
 torch::Tensor serial_index_impl(

@@ -1663,6 +1663,9 @@ def create_from_edges(sparse_fmt, arrays,
     -------
     DGLHeteroGraph
     """
+    print('in create_from_edges')
+    a = 2
+    b = 3
     if utype == vtype:
         num_ntypes = 1
     else:

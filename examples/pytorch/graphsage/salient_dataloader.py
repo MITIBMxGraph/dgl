@@ -14,6 +14,7 @@ import tqdm
 from model import SAGE
 from load_graph import load_reddit, inductive_split, load_ogb
 
+
 # fast sampler
 from fast_trainer.samplers import *
 from fast_trainer.transferers import *
@@ -94,9 +95,9 @@ def run(args, device, data):
                 skip_nonfull_batch=False, pin_memory=True # debug pinned memory
             )
 
-    train_loader = FastSampler(40, 50, cfg)
+    #train_loader = FastSampler(40, 50, cfg)
     #train_loader = FastSampler(2, 50, cfg)
-    #train_loader = FastSampler(1, 50, cfg) # serial to debug
+    train_loader = FastSampler(1, 50, cfg) # serial to debug
 
     # Define model and optimizer
     model = SAGE(x_dim, args.num_hidden, n_classes, args.num_layers, Func.relu, args.dropout)

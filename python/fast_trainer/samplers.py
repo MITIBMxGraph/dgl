@@ -16,6 +16,9 @@ from .monkeypatch import Adj
 # dgl compatibility
 import dgl
 from dgl.heterograph import DGLBlock
+from dgl.heterograph_index import *
+from dgl.heterograph import *
+from dgl._ffi.object import register_object
 
 # profling
 import nvtx

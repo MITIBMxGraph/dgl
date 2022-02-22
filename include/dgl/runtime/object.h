@@ -49,6 +49,7 @@ class AttrVisitor {
  * \brief base class of object container.
  *  All object's internal is stored as std::shared_ptr<Object>
  */
+
 class Object {
  public:
   /*! \brief virtual destructor */

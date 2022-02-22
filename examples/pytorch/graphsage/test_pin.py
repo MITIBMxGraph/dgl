@@ -37,9 +37,9 @@ def test_pin_memory_(idtype):
     #g = DGLBlock(create_test_heterograph(idtype))
     # convert
     #g = dgl.to_block(create_test_heterograph(idtype))
-    print(type(g))
+    #print(type(g))
     # get memory address
-    print(f'graph ptr: {hex(id(g))}')
+    #print(f'graph ptr: {hex(id(g))}')
 
     g.nodes['user'].data['h'] = torch.ones((3, 5), dtype=test_type)
     g.nodes['game'].data['i'] = torch.ones((2, 5), dtype=test_type)

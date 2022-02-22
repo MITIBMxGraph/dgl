@@ -1136,12 +1136,18 @@ def create_unitgraph_from_coo(num_ntypes, num_src, num_dst, row, col,
     -------
     HeteroGraphIndex
     """
+    a = 2
+    b = 3
+    print('in create_unitgraph_from_coo')
     if isinstance(formats, str):
         formats = [formats]
-    return _CAPI_DGLHeteroCreateUnitGraphFromCOO(
+    rv = _CAPI_DGLHeteroCreateUnitGraphFromCOO(
         int(num_ntypes), int(num_src), int(num_dst),
         F.to_dgl_nd(row), F.to_dgl_nd(col),
         formats, row_sorted, col_sorted)
+    print(type(rv))
+    print(rv)
+    return rv
 
 def create_unitgraph_from_csr(num_ntypes, num_src, num_dst, indptr, indices, edge_ids,
                               formats, transpose=False):
@@ -1170,12 +1176,18 @@ def create_unitgraph_from_csr(num_ntypes, num_src, num_dst, indptr, indices, edg
     -------
     HeteroGraphIndex
     """
+    a = 2
+    b = 3
+    print('in create_unitgraph_from_csr')
     if isinstance(formats, str):
         formats = [formats]
-    return _CAPI_DGLHeteroCreateUnitGraphFromCSR(
+    rv = _CAPI_DGLHeteroCreateUnitGraphFromCSR(
         int(num_ntypes), int(num_src), int(num_dst),
         F.to_dgl_nd(indptr), F.to_dgl_nd(indices), F.to_dgl_nd(edge_ids),
         formats, transpose)
+    print(type(rv))
+    print(rv)
+    return rv
 
 def create_heterograph_from_relations(metagraph, rel_graphs, num_nodes_per_type):
     """Create a heterograph from metagraph and graphs of every relation.

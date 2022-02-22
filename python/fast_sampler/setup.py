@@ -18,9 +18,24 @@ ROOT_PATH = Path(__file__).resolve().parent
 def get_extensions():
     define_macros = []
     libraries = []
-    extra_compile_args = {'cxx': ['-O3', '-mcpu=native', '-std=c++17', '-ggdb3'] + CXX_FLAGS}
+    library_dirs = []
+    #libraries = ['libdgl']
+    #library_dirs = ['/home/gridsan/pmurzynowski/dgl/build/']
+    extra_compile_args = {'cxx': ['-O3', '-mcpu=native', '-std=c++17', '-ggdb3', '-Wall'] + CXX_FLAGS}
     # '-lnvToolsExt' to link to nvtx api annotation capability
-    extra_link_args = ['-lnvToolsExt'] if WITH_SYMBOLS else ['-lnvToolsExt', '-s']
+    #extra_link_args = ['-lnvToolsExt'] if WITH_SYMBOLS else ['-lnvToolsExt', '-s']
+    extra_link_args = ['-lnvToolsExt']
+    dgl_link_args = [
+            #'-L/home/gridsan/pmurzynowski/dgl/build/third_party/dmlc-core/libdmlc.a',
+            #'-L/home/gridsan/pmurzynowski/dgl/build/tensoradapter/pytorch/libtensoradapter_pytorch_1.10.1.so',
+            #'-L/home/gridsan/pmurzynowski/dgl/python/dgl/_ffi/_cy3/core.cpython-39-x86_64-linux-gnu.so',
+            #'-L/home/gridsan/pmurzynowski/dgl/build/libdgl.so'
+            #'-L/home/gridsan/pmurzynowski/dgl/build --no-as-needed -llibdgl'
+            #'-L/home/gridsan/pmurzynowski/dgl/build -ldgl -Wl,--no-as-needed'
+            #'-L/home/gridsan/pmurzynowski/dgl/build -ldgl' 
+            '-ldgl'
+    ]
+    extra_link_args += dgl_link_args
 
     info = parallel_info()
     if 'backend: OpenMP' in info and 'OpenMP not found' not in info:
@@ -36,20 +51,27 @@ def get_extensions():
     # hacked-in dgl include
         '/home/gridsan/pmurzynowski/dgl/third_party/dlpack/include',
         '/home/gridsan/pmurzynowski/dgl/third_party/dmlc-core/include',
+        #'/home/gridsan/pmurzynowski/dgl/third_party/METIS/GKlib',
+        #'/home/gridsan/pmurzynowski/dgl/third_party/METIS/include/',
         '/home/gridsan/pmurzynowski/dgl/include/',
-        '/home/gridsan/pmurzynowski/dgl/src/']
+        #'/home/gridsan/pmurzynowski/dgl/src/'
+    ]
 
+    """
     # get all dgl cc files, hacky
     dgl_src_files = []
     for r, d, f in os.walk('/home/gridsan/pmurzynowski/dgl/src/'):
         for file in f:
             if '.cc' in file:
                 dgl_src_files.append(os.path.join(r, file))
+    """
 
     return [
         CppExtension(
             'fast_sampler',
-            ['fast_sampler.cpp'] + dgl_src_files,
+            ['fast_sampler.cpp'],
+            #['fast_sampler.cpp'],
+            #['fast_sampler.cpp'] + dgl_src_files,
             #[
             #    'fast_sampler.cpp',
             #    '/home/gridsan/pmurzynowski/dgl/src/array/array.cc',
@@ -61,12 +83,14 @@ def get_extensions():
             extra_compile_args=extra_compile_args,
             extra_link_args=extra_link_args,
             libraries=libraries,
+            library_dirs=library_dirs,
         ),
     ]
 
 setup(
     name='fast_sampler',
     ext_modules=get_extensions(),
+    package_data={'':['/home/gridsan/pmurzynowski/dgl/build/libdgl.so']},
     cmdclass={
         'build_ext': BuildExtension.with_options(no_python_abi_suffix=True, use_ninja=False)
     })
