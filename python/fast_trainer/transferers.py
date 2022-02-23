@@ -28,7 +28,6 @@ class DevicePrefetcher(DeviceIterator):
 
         self.it = it
         self.streams = [torch.cuda.Stream(device) for device in devices]
-        self.transferers = [dgl.dataloading.AsyncTransferer(torch.device(device)) for device in devices]
 
         # clean up, device prefetcher should be generic and not have a specified return value
         # rv should be specified by the iterator

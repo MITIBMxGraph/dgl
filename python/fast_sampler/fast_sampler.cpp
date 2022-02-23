@@ -128,6 +128,7 @@ ProtoSample multilayer_sample(
       pin_memory);
 }
 
+/*
 // Convert ProtoSample to DGLBlock
 std::tuple<dgl::HeteroGraphPtr, std::vector<dgl::IdArray>>
 toDGLBlock(ProtoSample proto) {
@@ -139,6 +140,7 @@ toDGLBlock(ProtoSample proto) {
   std::vector<dgl::IdArray> induced_edges;
   return std::make_tuple(new_graph, induced_edges);
 }
+*/
 
 template <typename scalar_t>
 torch::Tensor serial_index_impl(
@@ -647,9 +649,11 @@ void fast_sampler_thread(FastSamplerSlot& slot) {
       y_s = serial_index(*config.y, n_id, this_batch_size, config.pin_memory);
     }
     nvtxRangePop();
+    /*
     nvtxRangePushA("toDGLBlock");
     toDGLBlock(proto);
     nvtxRangePop();
+    */
 
     // TODO: Implement limit on the size of the output queue,
     //       to avoid high memory consumption when outpacing the training code.
