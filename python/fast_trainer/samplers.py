@@ -18,7 +18,9 @@ import dgl
 from dgl.heterograph import DGLBlock
 from dgl.heterograph_index import *
 from dgl.heterograph import *
-from dgl._ffi.object import register_object
+from ctypes import addressof
+from dgl import salient
+from . import salient
 
 # profling
 import nvtx
@@ -214,7 +216,16 @@ class FastSamplerIter(Iterator[PreparedBatch]):
         assert self.session.num_total_batches == cfg.get_num_batches()
 
     def __next__(self):
-        sample = self.session.blocking_get_batch()
+        #sample = self.session.blocking_get_batch()
+        x = 2
+        #addr = addressof(self.session)
+        addr = id(self.session)
+        print(f'addr: {addr}')
+        print(f'func: {dgl.salient.dgl_blocking_get_mfg}')
+        #sample = dgl.salient.dgl_blocking_get_mfg(addr)
+        sample = salient.dgl_blocking_get_mfg(addr)
+        print(f'sample: {sample}')
+        print(f'sample type: {type(sample)}')
         if sample is None:
             raise StopIteration
 
@@ -277,3 +288,4 @@ class FastPreSampler(ABCNeighborSampler):
 
     def __len__(self):
         return self.cfg.get_num_batches()
+

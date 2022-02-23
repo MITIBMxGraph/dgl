@@ -16,6 +16,7 @@
 #include <optional>
 #include <system_error>
 #include <thread>
+#include <string>
 
 #include <semaphore.h> 
 // includes for nvtx profiling
@@ -29,6 +30,7 @@
 #include <dgl/packed_func_ext.h>
 #include <dgl/immutable_graph.h>
 #include <dgl/runtime/registry.h>
+#include <dgl/runtime/packed_func.h>
 #include <dgl/runtime/container.h>
 #include <dgl/runtime/object.h>
 #include <dgl/runtime/c_runtime_api.h>
@@ -97,8 +99,8 @@ struct MySemaphore {
 //using ProtoSample = std::pair<torch::Tensor, Adjs>;
 //using PreparedSample = std::tuple<torch::Tensor, std::optional<torch::Tensor>, Adjs, std::pair<int32_t, int32_t>>;
 
-// using Blocks = std::vector<dgl::HeteroGraphRef>;
-using Blocks = std::vector<dgl::runtime::DGLRetValue*>;
+using Blocks = std::vector<dgl::HeteroGraphRef>;
+// using Blocks = std::vector<dgl::runtime::DGLRetValue*>;
 using ProtoSample = std::pair<torch::Tensor, Blocks>;
 using PreparedSample = std::tuple<torch::Tensor, std::optional<torch::Tensor>, Blocks, std::pair<int32_t, int32_t>>; 
 
@@ -156,7 +158,7 @@ ProtoSample multilayer_sample(
     auto out_hgptr = CreateHeteroGraph(metagraph.sptr(), rel_ptrs, num_nodes_per_type);
     auto out_graph_index = dgl::HeteroGraphRef(out_hgptr);
 
-    blocks.emplace_back(&out_graph_index);
+    blocks.emplace_back(out_graph_index);
   }
 
   std::reverse(blocks.begin(), blocks.end());
@@ -553,6 +555,7 @@ class FastSamplerSession {
     return batch;
   }
 
+
   std::optional<PreparedSample> blocking_get_batch() {
     if (num_consumed_batches == num_total_batches) {
       return {};
@@ -605,6 +608,7 @@ class FastSamplerSession {
  public:
   moodycamel::ConcurrentQueue<Range> inputs;
   moodycamel::ConcurrentQueue<PreparedSample> outputs;
+  moodycamel::ConcurrentQueue<PreparedSample> mfg_outputs;
   moodycamel::ProducerToken iptok; // input producer token
   moodycamel::ConsumerToken octok; // output consumer token
 
@@ -612,6 +616,40 @@ class FastSamplerSession {
   std::chrono::microseconds total_blocked_dur{};
   size_t total_blocked_occasions = 0;
 };
+
+
+/*
+DGL_REGISTER_GLOBAL("salient._CAPI_dgl_blocking_get_mfg")
+.set_body([] (dgl::runtime::DGLArgs args, dgl::runtime::DGLRetValue* rv) {
+    // Only valid if using CPython, quite sketchy
+    int x = 98;
+    void *ses_ptr = args[0];
+    FastSamplerSession *ses = static_cast<FastSamplerSession*>(ses_ptr);
+    size_t num_consumed_batches = ses->get_num_consumed_batches();
+    size_t num_total_batches = ses->get_num_total_batches();
+    if (num_consumed_batches == num_total_batches) {
+      *rv = NULL;
+    } else {
+      auto batch = ses->try_get_batch();
+      if (batch) {
+        *rv = std::get<2>(batch.value())[0];
+      } else {
+        auto start = std::chrono::high_resolution_clock::now();
+        while (true) {
+          auto batch = ses->try_get_batch();
+          if (batch) {
+            auto end = std::chrono::high_resolution_clock::now();
+            ses->total_blocked_dur +=
+                std::chrono::duration_cast<decltype(ses->total_blocked_dur)>(
+                    end - start);
+            ses->total_blocked_occasions++;
+            *rv = std::get<2>(batch.value())[0];
+          }
+        }
+      }
+    }
+  });
+*/
 
 void FastSamplerSlot::assign_session(FastSamplerSession& new_session) {
   std::unique_lock<decltype(mutex)> lock(mutex);

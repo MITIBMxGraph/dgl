@@ -15,13 +15,17 @@ WITH_SYMBOLS = True if os.getenv('WITH_SYMBOLS', '0') == '1' else False
 CXX_FLAGS = flags_to_list(os.getenv('CXX_FLAGS', ''))
 ROOT_PATH = Path(__file__).resolve().parent
 
+# use gcc because dgl does, need to be compatible with supporting libraries, e.g. for strings
+os.environ["CC"] = 'gcc'
+#CXX_FLAGS += ['-D_GLIBCXX_USE_CXX11_ABI=1']
+
 def get_extensions():
     define_macros = []
     libraries = []
     library_dirs = []
     #libraries = ['libdgl']
     #library_dirs = ['/home/gridsan/pmurzynowski/dgl/build/']
-    extra_compile_args = {'cxx': ['-O3', '-mcpu=native', '-std=c++17', '-ggdb3', '-Wall'] + CXX_FLAGS}
+    extra_compile_args = {'cxx': ['-O3', '-mcpu=native', '-std=c++17', '-ggdb3', '-Wall', '-Wabi-tag'] + CXX_FLAGS}
     # '-lnvToolsExt' to link to nvtx api annotation capability
     #extra_link_args = ['-lnvToolsExt'] if WITH_SYMBOLS else ['-lnvToolsExt', '-s']
     extra_link_args = ['-lnvToolsExt']
@@ -84,6 +88,7 @@ def get_extensions():
             extra_link_args=extra_link_args,
             libraries=libraries,
             library_dirs=library_dirs,
+            #undef_macros=['_GLIBCXX_USE_CXX11_ABI'],
         ),
     ]
 
