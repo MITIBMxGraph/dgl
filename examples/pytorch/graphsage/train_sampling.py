@@ -133,7 +133,7 @@ if __name__ == '__main__':
     #argparser.add_argument('--dataset', type=str, default='reddit')
     argparser.add_argument('--dataset', type=str, default='ogbn-products')
     argparser.add_argument('--num-epochs', type=int, default=3)
-    argparser.add_argument('--num-hidden', type=int, default=16)
+    argparser.add_argument('--num-hidden', type=int, default=256)
     argparser.add_argument('--num-layers', type=int, default=3)
     argparser.add_argument('--fan-out', type=str, default='5,10,15')
     argparser.add_argument('--batch-size', type=int, default=1024)
