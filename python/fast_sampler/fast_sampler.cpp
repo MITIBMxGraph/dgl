@@ -128,6 +128,11 @@ ProtoSample multilayer_sample(
     const int64_t nvtypes = 2;
     const int64_t num_dst = subset_size;
     const int64_t num_src = n_ids.size();
+    std::cout << "num_dst: " << num_dst << std::endl;
+    std::cout << "num_src: " << num_src << std::endl;
+    std::cout << "out_rowptr: " << out_rowptr << std::endl;
+    std::cout << "out_col: " << out_col << std::endl;
+    std::cout << "out_e_id: " << out_e_id << std::endl;
     std::vector<dgl::SparseFormat> formats_vec = {dgl::ParseSparseFormat("csr")};
     const auto code = SparseFormatsToCode(formats_vec);
     auto hgptr = dgl::CreateFromCSR(nvtypes, num_src, num_dst,

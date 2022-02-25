@@ -19,8 +19,6 @@ from dgl.heterograph import DGLBlock
 from dgl.heterograph_index import *
 from dgl.heterograph import *
 from ctypes import addressof
-from dgl import salient
-from . import salient
 
 # profling
 import nvtx
