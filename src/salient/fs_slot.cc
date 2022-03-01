@@ -1,4 +1,5 @@
-#include "fsr_slot.hpp"
+#include "fs_slot.hpp"
+#include "fs_session.hpp"
 
 
 void FastSamplerSlot::assign_session(FastSamplerSession& new_session) {

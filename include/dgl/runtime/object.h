@@ -223,7 +223,7 @@ class ObjectRef {
 /*! \brief Macro to generate common object reference class method definition */
 #define DGL_DEFINE_OBJECT_REF_METHODS(TypeName, BaseTypeName, ObjectName)        \
   TypeName() {}                                                                  \
-  explicit TypeName(std::shared_ptr<runtime::Object> obj): BaseTypeName(obj) {}  \
+  explicit TypeName(std::shared_ptr<::dgl::runtime::Object> obj): BaseTypeName(obj) {}  \
   const ObjectName* operator->() const {                                         \
     return static_cast<const ObjectName*>(obj_.get());                           \
   }                                                                              \

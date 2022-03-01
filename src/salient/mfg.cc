@@ -135,28 +135,43 @@ DGL_REGISTER_GLOBAL("salient.mfg._CAPI_TestMFGVector")
   });
 */
 
-// HeteroGraphIndexTuple
-class HeteroGraphTupleObject: public Object {
- public:
-  std::tuple<dgl::HeteroGraphRef> graphs;
+// HeteroGraphIndexArray
+class HeteroGraphArray: public dgl::runtime::Object {
+  public:
+    explicit HeteroGraphArray(std::vector<dgl::HeteroGraphRef> graphs): graphs(graphs) {}
+    virtual ~HeteroGraphArray() = default;
 
-  static constexpr const char* _type_key = "HeteroGraphTupleObject";
-  DGL_DECLARE_OBJECT_TYPE_INFO(HeteroGraphTupleObject, Object);
+    std::vector<dgl::HeteroGraphRef> graphs;
+
+    /*
+    void VisitAttrs(AttrVisitor *v) final {
+      v->Visit("graphs", &graphs);
+    }
+    */
+
+    static constexpr const char* _type_key = "graph.HeteroGraphArray";
+    DGL_DECLARE_OBJECT_TYPE_INFO(HeteroGraphArray, dgl::runtime::Object);
+
+  protected:
+    HeteroGraphArray(){}
 };
 
+DGL_DEFINE_OBJECT_REF(HeteroGraphArrayRef, HeteroGraphArray);
+/*
 // This is to define a reference class (the wrapper of an object shared pointer).
 // A minimal implementation is as follows, but you could define extra methods.
-class HeteroGraphTuple: public ObjectRef {
+class HeteroGraphArray: public ObjectRef {
  public:
-  constHeteroGraphTupleObject* operator->() const {
-    return static_cast<const HeteroGraphTupleObject*>(obj_.get());
+  const HeteroGraphArrayObject* operator->() const {
+    return static_cast<const HeteroGraphArrayObject*>(obj_.get());
   }
-  using ContainerType = CalculatorObject;
+  using ContainerType = HeteroGraphArrayObject;
 };
+*/
 
-DGL_REGISTER_GLOBAL("salient.mfg._CAPI_DGLHeteroTupleGetGraphAtIdx")
-.set_body([] (DGLArgs args, DGLRetValue* rv) {
-  HeteroGraphTuple hgt = args[0];
-  int idx = args[1]std::get<idx>(hgt)
-  *rv = std::get<idx>(hgt);
-}
+DGL_REGISTER_GLOBAL("salient.mfg._CAPI_DGLHeteroArrayGetGraphAtIdx")
+.set_body([] (dgl::runtime::DGLArgs args, dgl::runtime::DGLRetValue* rv) {
+    HeteroGraphArray hga = args[0];
+    int idx = args[1];
+    *rv = hga.graphs[idx];
+});

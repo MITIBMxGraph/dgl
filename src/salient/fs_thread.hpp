@@ -3,6 +3,8 @@
 
 
 #include "fs_common.hpp"
+#include "thread.hpp"
+#include "fs_slot.hpp"
 
 
 using FastSamplerThread = Thread<FastSamplerSlot>;

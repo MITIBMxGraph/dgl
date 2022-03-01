@@ -13,8 +13,8 @@ def get_cpp_test_mfg_vector():
 
 
 # class that contains multiple dgl graph objects created in the C++ backend
-@register_object('graph.HeteroGraphTuple')
-class HeteroGraphIndexTuple(ObjectBase):
-    # define getitem magic method to access underlying C++ vector/tuple/other container 
+@register_object('graph.HeteroGraphArray')
+class HeteroGraphIndexArray(ObjectBase):
+    # define getitem magic method to access underlying C++ vector 
     def __getitem__(self, idx):
-        return _CAPI_DGLHeteroTupleGetGraphAtIdx(self, idx)
+        return _CAPI_DGLHeteroArrayGetGraphAtIdx(self, idx)

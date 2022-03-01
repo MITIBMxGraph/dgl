@@ -41,14 +41,15 @@ FastSamplerSession::FastSamplerSession(
 }
 
 
-std::optional<PreparedSample> FastSamplerSession::try_get_batch() {
+PreparedSample FastSamplerSession::try_get_batch() {
   if (num_consumed_batches == num_total_batches) {
     return {};
   }
 
   PreparedSample batch;
   if (!outputs.try_dequeue(octok, batch)) {
-    return {};
+    // TODO: make sure this is initialized to empty
+    return {batch};
   }
   num_consumed_batches++;
   items_in_queue.release();
@@ -56,10 +57,13 @@ std::optional<PreparedSample> FastSamplerSession::try_get_batch() {
 }
 
 
-std::optional<PreparedSample> FastSamplerSession::blocking_get_batch() {
+PreparedSample FastSamplerSession::blocking_get_batch() {
+  // TODO: fix after removing optional
+  /*
   if (num_consumed_batches == num_total_batches) {
     return {};
   }
+  */
 
   auto batch = try_get_batch();
   if (batch) {

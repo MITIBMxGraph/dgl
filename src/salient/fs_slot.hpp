@@ -2,7 +2,7 @@
 #define FAST_SAMPLER_SLOT_H
 
 
-#include "fs_common.h"
+#include "fs_common.hpp"
 
 
 class FastSamplerSession;

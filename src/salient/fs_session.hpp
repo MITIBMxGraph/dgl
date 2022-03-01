@@ -2,7 +2,8 @@
 #define FAST_SAMPLER_SESSION_H_
 
 
-#include "fs_common.h"
+#include "fs_common.hpp"
+#include "fs_thread.hpp"
 
 
 class FastSamplerSession {
@@ -21,9 +22,9 @@ class FastSamplerSession {
     global_threadpool.consume(std::move(threads));
   }
 
-  std::optional<PreparedSample> try_get_batch();
+  PreparedSample try_get_batch();
 
-  std::optional<PreparedSample> blocking_get_batch();
+  PreparedSample blocking_get_batch();
 
   size_t get_num_consumed_batches() const {
     return num_consumed_batches;

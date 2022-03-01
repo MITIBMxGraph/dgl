@@ -96,6 +96,7 @@ else(MSVC)
   check_cxx_compiler_flag("-std=c++14"    SUPPORT_CXX14)
   set(CMAKE_C_FLAGS "-O2 -Wall -fPIC ${CMAKE_C_FLAGS}")
   set(CMAKE_CXX_FLAGS "-O2 -Wall -fPIC -std=c++14 ${CMAKE_CXX_FLAGS}")
+  # set(CMAKE_CXX_FLAGS "-O2 -Wall -fPIC -x c++ -std=c++17 -DAT_PARALLEL_OPENMP -fopenmp ${CMAKE_CXX_FLAGS}")
   if(NOT APPLE)
     set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--warn-common ${CMAKE_SHARED_LINKER_FLAGS}")
   endif(NOT APPLE)
@@ -285,6 +286,16 @@ if(MSVC)
     TARGET dgl POST_BUILD COMMAND
     ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:dgl>" "$<TARGET_FILE_DIR:dgl>/..")
 endif(MSVC)
+
+# TODO: CLEANUP
+# want to include torch for torch/extension.h
+include_directories(/home/gridsan/pmurzynowski/.conda/envs/salientdgl/include)
+include_directories(/home/gridsan/pmurzynowski/.conda/envs/salientdgl/include)
+include_directories(/home/gridsan/pmurzynowski/.conda/envs/salientdgl/lib/python3.9/site-packages/torch/include/)
+include_directories(/home/gridsan/pmurzynowski/.conda/envs/salientdgl/lib/python3.9/site-packages/torch/include/torch/csrc/api/include/)
+include_directories(/home/gridsan/pmurzynowski/.conda/envs/salientdgl/lib/python3.9/site-packages/torch/include/THC/)
+include_directories(/home/gridsan/pmurzynowski/.conda/envs/salientdgl/lib/python3.9/site-packages/torch/include/TH/)
+include_directories(/home/gridsan/pmurzynowski/.conda/envs/salientdgl/include/python3.9)
 
 # Tensor adapter libraries
 # Linking against LibTorch involves linking against a bunch of other libraries
