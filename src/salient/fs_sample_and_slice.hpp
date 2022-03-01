@@ -1,3 +1,7 @@
+#ifndef FAST_SAMPLER_SAMPLE_AND_SLICE_H_
+#define FAST_SAMPLER_SAMPLE_AND_SLICE_H_
+
+
 #include "fs_common.hpp"
 #include "sample_cpu.hpp"
 
@@ -47,3 +51,6 @@ torch::Tensor serial_index(
 );
 
 torch::Tensor to_row_major(torch::Tensor const in);
+
+
+#endif // FAST_SAMPLER_SAMPLE_AND_SLICE_H_

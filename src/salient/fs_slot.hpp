@@ -1,6 +1,5 @@
 #ifndef FAST_SAMPLER_SLOT_H
-#define FAST_SAMPLER_SLOT_H
-
+#define FAST_SAMPLER_SLOT_H 
 
 #include "fs_common.hpp"
 

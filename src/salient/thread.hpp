@@ -35,4 +35,4 @@ class Thread {
   std::thread thread;
 };
 
-#endif // FAST_SAMPLER_THREAD_H_
+#endif // FAST_SAMPLER_THREAD_CLASS_H_

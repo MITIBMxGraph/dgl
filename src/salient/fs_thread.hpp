@@ -11,9 +11,7 @@
 using FastSamplerThread = Thread<FastSamplerSlot>;
 
 FastSamplerThread thread_factory();
-ThreadPool<FastSamplerThread> global_threadpool{
-    thread_factory,
-    std::thread::hardware_concurrency()};
+extern ThreadPool<FastSamplerThread> global_threadpool;
 
 
 #endif // FAST_SAMPLER_THREAD_H

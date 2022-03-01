@@ -15,11 +15,14 @@
 #include <limits>
 #include <memory>
 #include <mutex>
-// not with c++14
-// #include <optional>
 #include <system_error>
 #include <thread>
 #include <string>
+
+// not with c++14
+// #include <optional>
+#include <boost/optional.hpp>
+using boost::optional;
 
 // includes for nvtx profiling
 #include "nvToolsExt.h"
@@ -67,13 +70,13 @@ using Blocks = std::vector<dgl::HeteroGraphRef>;
 using ProtoSample = std::pair<torch::Tensor, Blocks>;
 // Features, optionally labels, mfgs, idx range of vertices to be trained on
 // using PreparedSample = std::tuple<torch::Tensor, std::optional<torch::Tensor>, Blocks, std::pair<int32_t, int32_t>>;
-using PreparedSample = std::tuple<torch::Tensor, torch::Tensor, Blocks, std::pair<int32_t, int32_t>>;
+using PreparedSample = std::tuple<torch::Tensor, optional<torch::Tensor>, Blocks, std::pair<int32_t, int32_t>>;
 
 
 struct FastSamplerConfig {
   size_t batch_size;
   torch::Tensor x;
-  torch::Tensor y;
+  optional<torch::Tensor> y;
   torch::Tensor rowptr, col, idx;
   std::vector<int64_t> sizes;
   bool skip_nonfull_batch;

@@ -17,14 +17,11 @@ class FastSamplerSession {
       FastSamplerConfig config_
   );
 
-  ~FastSamplerSession() {
-    // Return the threads to the pool.
-    global_threadpool.consume(std::move(threads));
-  }
+  ~FastSamplerSession();
 
-  PreparedSample try_get_batch();
+  optional<PreparedSample> try_get_batch();
 
-  PreparedSample blocking_get_batch();
+  optional<PreparedSample> blocking_get_batch();
 
   size_t get_num_consumed_batches() const {
     return num_consumed_batches;

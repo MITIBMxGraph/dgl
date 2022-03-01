@@ -1,5 +1,9 @@
 #include "fs_session.hpp"
 
+ThreadPool<FastSamplerThread> global_threadpool{
+  thread_factory,
+  std::thread::hardware_concurrency()};
+
 FastSamplerSession::FastSamplerSession(
     size_t num_threads,
     unsigned int max_items_in_queue,
@@ -40,16 +44,20 @@ FastSamplerSession::FastSamplerSession(
   }
 }
 
+FastSamplerSession::~FastSamplerSession() {
+  // Return the threads to the pool.
+  global_threadpool.consume(std::move(threads));
+}
 
-PreparedSample FastSamplerSession::try_get_batch() {
+
+optional<PreparedSample> FastSamplerSession::try_get_batch() {
   if (num_consumed_batches == num_total_batches) {
     return {};
   }
 
   PreparedSample batch;
   if (!outputs.try_dequeue(octok, batch)) {
-    // TODO: make sure this is initialized to empty
-    return {batch};
+    return {};
   }
   num_consumed_batches++;
   items_in_queue.release();
@@ -57,13 +65,10 @@ PreparedSample FastSamplerSession::try_get_batch() {
 }
 
 
-PreparedSample FastSamplerSession::blocking_get_batch() {
-  // TODO: fix after removing optional
-  /*
+optional<PreparedSample> FastSamplerSession::blocking_get_batch() {
   if (num_consumed_batches == num_total_batches) {
     return {};
   }
-  */
 
   auto batch = try_get_batch();
   if (batch) {
