@@ -10,7 +10,7 @@
 
 using FastSamplerThread = Thread<FastSamplerSlot>;
 
-FastSamplerThread thread_factory();
+extern FastSamplerThread thread_factory();
 extern ThreadPool<FastSamplerThread> global_threadpool;
 
 

@@ -1,5 +1,5 @@
 from dgl._ffi.function import _init_api
-from ._ffi.object import register_object, ObjectBase
+from dgl._ffi.object import register_object, ObjectBase
 from dgl.heterograph import DGLBlock
 
 _init_api("dgl.salient.mfg")

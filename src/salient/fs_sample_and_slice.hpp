@@ -3,6 +3,8 @@
 
 
 #include "fs_common.hpp"
+#include "fs_thread.hpp"
+#include "fs_session.hpp"
 #include "sample_cpu.hpp"
 
 

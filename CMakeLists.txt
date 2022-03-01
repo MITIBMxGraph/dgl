@@ -280,6 +280,16 @@ if (LIBCXX_ENABLE_PARALLEL_ALGORITHMS)
   add_definitions(-DPARALLEL_ALGORITHMS)
 endif(LIBCXX_ENABLE_PARALLEL_ALGORITHMS)
 
+# link in additional libraries for salient
+set(TORCHLIB_PATH "/home/gridsan/pmurzynowski/.conda/envs/salientdgl/lib/python3.9/site-packages/torch/lib/")
+#link_directories(${TORCHLIB_PATH})
+#list(APPEND DGL_LINKER_LIBS c10 torch torch_cpu torch_python)
+find_library(C10_LIBRARY c10 HINTS ${TORCHLIB_PATH})
+find_library(TORCH_LIBRARY torch HINTS ${TORCHLIB_PATH})
+find_library(TORCH_CPU_LIBRARY torch_cpu HINTS ${TORCHLIB_PATH})
+find_library(TORCH_PYTHON_LIBRARY torch_python HINTS ${TORCHLIB_PATH})
+list(APPEND DGL_LINKER_LIBS ${C10_LIBRARY} ${TORCH_LIBRARY} ${TORCH_CPU_LIBRARY} ${TORCH_PYTHON_LIBRARY})
+
 target_link_libraries(dgl ${DGL_LINKER_LIBS} ${DGL_RUNTIME_LINKER_LIBS})
 if(MSVC)
   add_custom_command(
