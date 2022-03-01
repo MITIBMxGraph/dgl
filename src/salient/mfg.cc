@@ -136,7 +136,7 @@ DGL_REGISTER_GLOBAL("salient.mfg._CAPI_TestMFGVector")
 */
 
 // HeteroGraphIndexArray
-class HeteroGraphArray: public dgl::runtime::Object {
+class HeteroGraphArray : public dgl::runtime::Object {
   public:
     explicit HeteroGraphArray(std::vector<dgl::HeteroGraphRef> graphs): graphs(graphs) {}
     virtual ~HeteroGraphArray() = default;
@@ -171,7 +171,7 @@ class HeteroGraphArray: public ObjectRef {
 
 DGL_REGISTER_GLOBAL("salient.mfg._CAPI_DGLHeteroArrayGetGraphAtIdx")
 .set_body([] (dgl::runtime::DGLArgs args, dgl::runtime::DGLRetValue* rv) {
-    HeteroGraphArray hga = args[0];
+    HeteroGraphArrayRef hga = args[0];
     int idx = args[1];
-    *rv = hga.graphs[idx];
+    *rv = hga->graphs[idx];
 });
