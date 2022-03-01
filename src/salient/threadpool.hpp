@@ -2,7 +2,7 @@
 #define FAST_SAMPLER_THREADPOOL_H_
 
 
-#include "fs_common.h"
+#include "fs_common.hpp"
 
 
 template <class Thread>

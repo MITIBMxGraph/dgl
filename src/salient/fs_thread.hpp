@@ -4,6 +4,7 @@
 
 #include "fs_common.hpp"
 #include "thread.hpp"
+#include "threadpool.hpp"
 #include "fs_slot.hpp"
 
 

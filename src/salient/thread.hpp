@@ -1,8 +1,8 @@
-#ifndef FAST_SAMPLER_THREAD_H_
-#define FAST_SAMPLER_THREAD_H_
+#ifndef FAST_SAMPLER_THREAD_CLASS_H_
+#define FAST_SAMPLER_THREAD_CLASS_H_
 
 
-#include "fs_common.h"
+#include "fs_common.hpp"
 
 
 template <class Slot>
