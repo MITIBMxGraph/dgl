@@ -44,7 +44,7 @@ FastSamplerSession::FastSamplerSession(
   }
 }
 
-FastSamplerSession::~FastSamplerSession() {
+FastSamplerSession::~FastSamplerSession() noexcept {
   // Return the threads to the pool.
   global_threadpool.consume(std::move(threads));
 }
@@ -88,3 +88,13 @@ optional<PreparedSample> FastSamplerSession::blocking_get_batch() {
     }
   }
 }
+
+
+DGL_REGISTER_GLOBAL("salient._CAPI_FSSessionBlockingGetBatch")
+.set_body([] (dgl::runtime::DGLArgs args, dgl::runtime::DGLRetValue* rv) {
+    printf("entered salient._CAPI_FSSessionBlockingGetBatch\n");
+    FastSamplerSessionRef fssr = args[0];
+    printf("before blocking_get_batch\n");
+    *rv = fssr->blocking_get_batch();
+    printf("after blocking_get_batch\n");
+});

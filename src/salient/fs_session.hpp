@@ -4,9 +4,14 @@
 
 #include "fs_common.hpp"
 #include "fs_thread.hpp"
+#include "fs_return_types.hpp"
 
 
-class FastSamplerSession {
+/*
+ * Accessible in python through dgl's ffi.
+ */
+
+class FastSamplerSession : public dgl::runtime::Object {
  public:
   using Range = std::pair<int32_t, int32_t>;
   // using Chunk = std::pair<uint8_t, std::array<Range, 5>>;
@@ -17,7 +22,7 @@ class FastSamplerSession {
       FastSamplerConfig config_
   );
 
-  ~FastSamplerSession();
+  ~FastSamplerSession() noexcept;
 
   optional<PreparedSample> try_get_batch();
 
@@ -57,7 +62,13 @@ class FastSamplerSession {
   // benchmarking data
   std::chrono::microseconds total_blocked_dur{};
   size_t total_blocked_occasions = 0;
+
+  static constexpr const char* _type_key = "salient.FastSamplerSession";
+  DGL_DECLARE_OBJECT_TYPE_INFO(FastSamplerSession, dgl::runtime::Object);
 };
+
+
+DGL_DEFINE_OBJECT_REF(FastSamplerSessionRef, FastSamplerSession);
 
 
 #endif // FAST_SAMPLER_SESSION_H_

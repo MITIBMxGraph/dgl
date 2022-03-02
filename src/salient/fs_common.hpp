@@ -18,6 +18,7 @@
 #include <system_error>
 #include <thread>
 #include <string>
+#include <cstdint>
 
 // not with c++14
 // #include <optional>
@@ -62,15 +63,6 @@ using boost::optional;
 
 using namespace dgl::runtime;
 using namespace dgl::aten;
-
-
-// Type for message flow graphs
-using Blocks = std::vector<dgl::HeteroGraphRef>;
-// Message flow graphs and indices of features to slice
-using ProtoSample = std::pair<torch::Tensor, Blocks>;
-// Features, optionally labels, mfgs, idx range of vertices to be trained on
-// using PreparedSample = std::tuple<torch::Tensor, std::optional<torch::Tensor>, Blocks, std::pair<int32_t, int32_t>>;
-using PreparedSample = std::tuple<torch::Tensor, optional<torch::Tensor>, Blocks, std::pair<int32_t, int32_t>>;
 
 
 struct FastSamplerConfig {
