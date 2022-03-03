@@ -73,8 +73,20 @@ OptionalPreparedSampleRef createTestOptionalPreparedSample() {
     auto ops = std::make_shared<OptionalPreparedSample>();
     PreparedSample ps;
     ps.mfgs = createTestHeteroGraphArrayRef();
-    ps.x = torch::ones({2, 2});
-    ps.y = torch::ones({2, 1});
+
+    constexpr DLContext ctx = DLContext{kDLCPU, 0};
+    const uint8_t nbits = 32;
+    ps.x = dgl::NDArray::Empty({2, 2}, DLDataType{kDLInt, nbits, 1}, ctx);
+    const auto xptr = ps.x.Ptr<int32_t>();
+    *xptr = 1;
+    *(xptr + 1) = 2;
+    *(xptr + 2) = 3;
+    *(xptr + 3) = 4;
+    ps.y = dgl::NDArray::Empty({2, 1}, DLDataType{kDLInt, nbits, 1}, ctx);
+    const auto yptr = ps.y->Ptr<int32_t>();
+    *yptr = 5;
+    *(yptr + 1) = 6;
+
     ps.range = std::make_pair(30, 40);
     ops->value = ps;
     return OptionalPreparedSampleRef(ops);

@@ -60,18 +60,14 @@ DGL_REGISTER_GLOBAL("salient._CAPI_OptionalPreparedSampleGetRangeEnd")
     *rv = opsr->value->range.second;
 });
 
-/*
-
 DGL_REGISTER_GLOBAL("salient._CAPI_OptionalPreparedSampleGetX")
 .set_body([] (dgl::runtime::DGLArgs args, dgl::runtime::DGLRetValue* rv) {
     OptionalPreparedSampleRef opsr = args[0];
-    *rv = (*(opsr->value)).x;
+    *rv = opsr->value->x;
 });
 
 DGL_REGISTER_GLOBAL("salient._CAPI_OptionalPreparedSampleGetY")
 .set_body([] (dgl::runtime::DGLArgs args, dgl::runtime::DGLRetValue* rv) {
     OptionalPreparedSampleRef opsr = args[0];
-    *rv = *((*(opsr->value)).y);
+    *rv = *(opsr->value->y);
 });
-
-*/

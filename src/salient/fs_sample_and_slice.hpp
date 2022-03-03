@@ -25,7 +25,7 @@ ProtoSample multilayer_sample(
 );
 
 template <typename scalar_t>
-torch::Tensor serial_index_impl(
+dgl::NDArray serial_index_impl(
     torch::Tensor const in,
     torch::Tensor const idx,
     int64_t const n,
@@ -33,26 +33,24 @@ torch::Tensor serial_index_impl(
 );
 
 template <typename scalar_t>
-torch::Tensor serial_index_impl(
+dgl::NDArray serial_index_impl(
     torch::Tensor const in,
     torch::Tensor const idx,
     bool const pin_memory = false
 );
 
-torch::Tensor serial_index(
+dgl::NDArray serial_index(
     torch::Tensor const in,
     torch::Tensor const idx,
     int64_t const n,
     bool const pin_memory = false
 );
 
-torch::Tensor serial_index(
+dgl::NDArray serial_index(
     torch::Tensor const in,
     torch::Tensor const idx,
     bool const pin_memory = false
 );
-
-torch::Tensor to_row_major(torch::Tensor const in);
 
 
 #endif // FAST_SAMPLER_SAMPLE_AND_SLICE_H_

@@ -83,7 +83,7 @@ ProtoSample multilayer_sample(
 
 
 template <typename scalar_t>
-torch::Tensor serial_index_impl(
+dgl::NDArray serial_index_impl(
     torch::Tensor const in,
     torch::Tensor const idx,
     int64_t const n,
@@ -94,11 +94,15 @@ torch::Tensor serial_index_impl(
           (in.sizes().back() == 1),
       "input must be 2D row-major tensor");
 
-  torch::Tensor out =
-      torch::empty({n, f}, in.options().pinned_memory(pin_memory));
   auto inptr = in.data_ptr<scalar_t>();
-  auto outptr = out.data_ptr<scalar_t>();
   auto idxptr = idx.data_ptr<int64_t>();
+
+  constexpr DLContext ctx = DLContext{kDLCPU, 0};
+  const uint8_t nbits = sizeof(scalar_t) * 8;
+  dgl::NDArray out = dgl::NDArray::Empty({n, f}, DLDataType{kDLInt, nbits, 1}, ctx);
+  const auto outptr = out.Ptr<scalar_t>();
+
+
   for (int64_t i = 0; i < std::min(idx.numel(), n); ++i) {
     const auto row = idxptr[i];
     std::copy_n(inptr + row * f, f, outptr + i * f);
@@ -108,14 +112,14 @@ torch::Tensor serial_index_impl(
 }
 
 template <typename scalar_t>
-torch::Tensor serial_index_impl(
+dgl::NDArray serial_index_impl(
     torch::Tensor const in,
     torch::Tensor const idx,
     bool const pin_memory) {
   return serial_index_impl<scalar_t>(in, idx, idx.numel(), pin_memory);
 }
 
-torch::Tensor serial_index(
+dgl::NDArray serial_index(
     torch::Tensor const in,
     torch::Tensor const idx,
     int64_t const n,
@@ -125,7 +129,7 @@ torch::Tensor serial_index(
   });
 }
 
-torch::Tensor serial_index(
+dgl::NDArray serial_index(
     torch::Tensor const in,
     torch::Tensor const idx,
     bool const pin_memory) {
@@ -133,38 +137,6 @@ torch::Tensor serial_index(
     return serial_index_impl<scalar_t>(in, idx, pin_memory);
   });
 }
-
-torch::Tensor to_row_major(torch::Tensor const in) {
-  TORCH_CHECK(in.strides().size() == 2, "only support 2D tensors");
-  auto const tr = in.sizes().front();
-  auto const tc = in.sizes().back();
-
-  if (in.strides().front() == tc && in.strides().back() == 1) {
-    return in; // already in row major
-  }
-
-  TORCH_CHECK(
-      in.strides().front() == 1 && tr == in.strides().back(),
-      "input has unrecognizable stides");
-
-  auto out = torch::empty_strided(in.sizes(), {tc, 1}, in.options());
-
-  AT_DISPATCH_FLOATING_TYPES_AND(
-      at::ScalarType::Long, in.scalar_type(), "to_row_major", [&] {
-        auto inptr = in.data_ptr<scalar_t>();
-        auto outptr = out.data_ptr<scalar_t>();
-
-        for (int64_t r = 0; r < tr; ++r) {
-          for (int64_t c = 0; c < tc; ++c) {
-            outptr[r * tc + c] = inptr[c * tr + r];
-          }
-        }
-      });
-
-  return out;
-}
-
-
 
 
 void fast_sampler_thread(FastSamplerSlot& slot) {
@@ -218,7 +190,7 @@ void fast_sampler_thread(FastSamplerSlot& slot) {
     // std::cout << torch::max(n_id) << std::endl;
     // std::cout << torch::min(n_id) << std::endl;
     auto x_s = serial_index(config.x, n_id, config.pin_memory);
-    optional<torch::Tensor> y_s;
+    optional<dgl::NDArray> y_s;
     // std::optional
     // if (config.y.has_value()) {
     // boost::optional
@@ -246,41 +218,3 @@ void fast_sampler_thread(FastSamplerSlot& slot) {
 FastSamplerThread thread_factory() {
   return FastSamplerThread{fast_sampler_thread};
 }
-
-/*
-// repliate using dgl's ffi
-PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  py::class_<FastSamplerConfig>(m, "Config")
-      .def(py::init<>())
-      .def_readwrite("x", &FastSamplerConfig::x)
-      .def_readwrite("y", &FastSamplerConfig::y)
-      .def_readwrite("rowptr", &FastSamplerConfig::rowptr)
-      .def_readwrite("col", &FastSamplerConfig::col)
-      .def_readwrite("idx", &FastSamplerConfig::idx)
-      .def_readwrite("batch_size", &FastSamplerConfig::batch_size)
-      .def_readwrite("sizes", &FastSamplerConfig::sizes)
-      .def_readwrite(
-          "skip_nonfull_batch", &FastSamplerConfig::skip_nonfull_batch)
-      .def_readwrite("pin_memory", &FastSamplerConfig::pin_memory);
-  py::class_<FastSamplerSession>(m, "Session")
-      .def(
-          py::init<size_t, unsigned int, FastSamplerConfig>(),
-          py::arg("num_threads"),
-          py::arg("max_items_in_queue"),
-          py::arg("config"))
-      .def_readonly("config", &FastSamplerSession::config)
-      .def("try_get_batch", &FastSamplerSession::try_get_batch)
-      .def("blocking_get_batch", &FastSamplerSession::blocking_get_batch)
-      .def_property_readonly(
-          "num_consumed_batches", &FastSamplerSession::get_num_consumed_batches)
-      .def_property_readonly(
-          "num_total_batches", &FastSamplerSession::get_num_total_batches)
-      .def_property_readonly(
-          "approx_num_complete_batches",
-          &FastSamplerSession::get_approx_num_complete_batches)
-      .def_readonly("total_blocked_dur", &FastSamplerSession::total_blocked_dur)
-      .def_readonly(
-          "total_blocked_occasions",
-          &FastSamplerSession::total_blocked_occasions);
-}
-*/

@@ -42,8 +42,8 @@ typedef struct ProtoSample {
  * 4. corresponding range of indices trained on (post shuffle)
  */
 typedef struct PreparedSample {
-  torch::Tensor x;
-  optional<torch::Tensor> y;
+  dgl::NDArray x;
+  optional<dgl::NDArray> y;
   HeteroGraphArrayRef mfgs;
   std::pair<int32_t, int32_t> range;
 };
