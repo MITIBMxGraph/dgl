@@ -5,6 +5,7 @@
 #include "fs_common.hpp"
 #include "fs_thread.hpp"
 #include "fs_return_types.hpp"
+#include "fs_config.hpp"
 
 
 /*

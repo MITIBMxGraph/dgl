@@ -65,17 +65,6 @@ using namespace dgl::runtime;
 using namespace dgl::aten;
 
 
-struct FastSamplerConfig {
-  size_t batch_size;
-  torch::Tensor x;
-  optional<torch::Tensor> y;
-  torch::Tensor rowptr, col, idx;
-  std::vector<int64_t> sizes;
-  bool skip_nonfull_batch;
-  bool pin_memory;
-};
-
-
 struct MySemaphore {
   MySemaphore(unsigned int value) {
     sem_init(&sem, 0, value);
