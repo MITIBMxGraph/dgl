@@ -25,7 +25,28 @@ class OptionalPreparedSample(ObjectBase):
         - batch mfgs
         - range of indices trained on in batch
     """
-    pass
+
+    def __bool__(self):
+        return True if _CAPI_OptionalPreparedSampleHasValue(self) else False
+
+    @property
+    def x(self):
+       return _CAPI_OptionalPreparedSampleGetX(self) if _CAPI_OptionalPreparedSampleHasValue(self) else None
+
+    @property
+    def y(self):
+       return _CAPI_OptionalPreparedSampleGetY(self) if (_CAPI_OptionalPreparedSampleHasValue(self) and _CAPI_OptionalPreparedSampleHasY(self)) else None
+
+    @property
+    def blocks(self):
+        if _CAPI_OptionalPreparedSampleHasValue(self):
+            mfgs = _CAPI_OptionalPreparedSampleGetMfgs(self)
+            return [DGLBlock(mfgs[i]) for i in range(len(mfgs))]
+        return None
+
+    @property
+    def range(self):
+       return (_CAPI_OptionalPreparedSampleGetRangeStart(self), _CAPI_OptionalPreparedSampleGetRangeEnd(self)) if _CAPI_OptionalPreparedSampleHasValue(self) else None
 
 
 """

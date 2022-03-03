@@ -92,6 +92,11 @@ OptionalPreparedSampleRef createTestOptionalPreparedSample() {
     return OptionalPreparedSampleRef(ops);
 }
 
+OptionalPreparedSampleRef createTestEmptyOptionalPreparedSample() {
+    auto ops = std::make_shared<OptionalPreparedSample>();
+    return OptionalPreparedSampleRef(ops);
+}
+
 
 DGL_REGISTER_GLOBAL("salient._CAPI_TestMFG")
 .set_body([] (dgl::runtime::DGLArgs args, dgl::runtime::DGLRetValue* rv) {
@@ -107,4 +112,9 @@ DGL_REGISTER_GLOBAL("salient._CAPI_TestDGLHeteroArray")
 DGL_REGISTER_GLOBAL("salient._CAPI_TestOptionalPreparedSample")
 .set_body([] (dgl::runtime::DGLArgs args, dgl::runtime::DGLRetValue* rv) {
     *rv = createTestOptionalPreparedSample();
+});
+
+DGL_REGISTER_GLOBAL("salient._CAPI_TestEmptyOptionalPreparedSample")
+.set_body([] (dgl::runtime::DGLArgs args, dgl::runtime::DGLRetValue* rv) {
+    *rv = createTestEmptyOptionalPreparedSample();
 });

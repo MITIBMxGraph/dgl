@@ -35,6 +35,8 @@ DGL_REGISTER_GLOBAL("salient._CAPI_OptionalPreparedSampleHasValue")
     *rv = has;
 });
 
+// Below methods assume OptionalPreparedSampleHasValue == true
+
 DGL_REGISTER_GLOBAL("salient._CAPI_OptionalPreparedSampleHasY")
 .set_body([] (dgl::runtime::DGLArgs args, dgl::runtime::DGLRetValue* rv) {
     OptionalPreparedSampleRef opsr = args[0];
