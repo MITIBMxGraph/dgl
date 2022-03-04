@@ -47,6 +47,7 @@ from .random import *
 from .data.utils import save_graphs, load_graphs
 from . import optim
 
+from .ndarray import *
 from .salient import *
 
 from ._deprecate.graph import DGLGraph as DGLGraphStale

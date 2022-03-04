@@ -13,8 +13,7 @@ from model import SAGE
 from load_graph import load_reddit, inductive_split, load_ogb
 
 # fast sampler
-from fast_trainer.samplers import *
-from fast_trainer.transferers import *
+from dgl.salient import *
 
 # profiling
 import nvtx
@@ -77,13 +76,15 @@ def run(args, device, data):
     #convert graph to input to format that can be fed into Salient
     with nvtx.annotate('convert DGLGraph to CSR for Salient'):
         rowptr, col, edge_ids = g.adj_sparse('csr')
-    cfg = FastSamplerConfig(
+    cfg = FastSamplerConfig.create(
                 # ignore features and labels temporarily
                 #x=dataset.x, y=dataset.y.unsqueeze(-1),
                 #x=th.empty((0, 0)), y=th.empty((0, 0)),
-                x=x, y=y.unsqueeze(-1),
-                rowptr=rowptr, col=col,
-                idx=train_nid,
+                x=dgl.backend.zerocopy_to_dgl_ndarray(x),
+                y=dgl.backend.zerocopy_to_dgl_ndarray(y.unsqueeze(-1)),
+                rowptr=dgl.backend.zerocopy_to_dgl_ndarray(rowptr),
+                col=dgl.backend.zerocopy_to_dgl_ndarray(col),
+                idx=dgl.backend.zerocopy_to_dgl_ndarray(train_nid),
                 batch_size=args.batch_size, sizes=salient__fanout,
                 #skip_nonfull_batch=False, pin_memory=True
                 skip_nonfull_batch=False, pin_memory=True # debug pinned memory
