@@ -83,12 +83,17 @@ ProtoSample multilayer_sample(
 }
 
 
-template <typename scalar_t>
 dgl::NDArray serial_index_impl(
     dgl::NDArray const in,
     dgl::NDArray const idx,
     int64_t const n,
     bool const pin_memory) {
+
+  // Hacky, potential TODO is to cleanup
+  // eliminated templating + dispatch used with torch::Tensor
+  // trade of for a little bit of pointer arthmetic
+  // previous approach was cleaner but not immediately as simple with DLTensor
+
   // WARNING: assuming two-dimenstional below
   const auto f = in.Shape()[1];
   // TODO: re-add this check for dgl
@@ -97,52 +102,47 @@ dgl::NDArray serial_index_impl(
   //         (in.sizes().back() == 1),
   //     "input must be 2D row-major tensor");
 
-  auto inptr = in.Ptr<scalar_t>();
+  // Note: not actually byte types, kept simple for pointer arthimetic
+  auto inptr = in.Ptr<int8_t>();
+
   auto idxptr = idx.Ptr<int64_t>();
 
   constexpr DLContext ctx = DLContext{kDLCPU, 0};
-  const uint8_t nbits = sizeof(scalar_t) * 8;
-  dgl::NDArray out = dgl::NDArray::Empty({n, f}, DLDataType{kDLInt, nbits, 1}, ctx);
-  const auto outptr = out.Ptr<scalar_t>();
+  const uint8_t nbits = in.NumBits();
+  const auto nbytes = nbits / 8;
+
+  dgl::NDArray out = dgl::NDArray::Empty({n, f}, in.DType(), ctx);
+  const auto outptr = out.Ptr<int8_t>();
 
 
   for (int64_t i = 0; i < std::min(idx.NumElements(), n); ++i) {
     const auto row = idxptr[i];
-    std::copy_n(inptr + row * f, f, outptr + i * f);
+    std::copy_n(inptr + row * f * nbytes, f, outptr + i * f * nbytes);
   }
 
   return out;
 }
 
-template <typename scalar_t>
 dgl::NDArray serial_index_impl(
-    dgl::NDArray const in,
-    dgl::NDArray const idx,
-    bool const pin_memory) {
-  return serial_index_impl<scalar_t>(in, idx, idx.NumElements(), pin_memory);
+  dgl::NDArray const in,
+  dgl::NDArray const idx,
+  bool const pin_memory) {
+    return serial_index_impl(in, idx, idx.NumElements(), pin_memory);
 }
 
 dgl::NDArray serial_index(
-    dgl::NDArray const in,
-    dgl::NDArray const idx,
-    int64_t const n,
-    bool const pin_memory) {
-  // Quick type hack instead of redefining macro for NDArray
-  // Assumes using pytorch backend.
-  return AT_DISPATCH_ALL_TYPES_AND(at::ScalarType::Half, in.scalar_type(), "serial_index", [&] {
-    return serial_index_impl<scalar_t>(in, idx, n, pin_memory);
-  });
+  dgl::NDArray const in,
+  dgl::NDArray const idx,
+  int64_t const n,
+  bool const pin_memory) {
+    return serial_index_impl(in, idx, n, pin_memory);
 }
 
 dgl::NDArray serial_index(
-    dgl::NDArray const in,
-    dgl::NDArray const idx,
-    bool const pin_memory) {
-  // Quick type hack instead of redefining macro for NDArray
-  // Assumes using pytorch backend.
-  return AT_DISPATCH_ALL_TYPES_AND(at::ScalarType::Half, in.scalar_type(), "serial_index", [&] {
-    return serial_index_impl<scalar_t>(in, idx, pin_memory);
-  });
+  dgl::NDArray const in,
+  dgl::NDArray const idx,
+  bool const pin_memory) {
+    return serial_index_impl(in, idx, pin_memory);
 }
 
 

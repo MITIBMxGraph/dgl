@@ -233,13 +233,16 @@ class NDArray {
    * \return The shape;
    */
   int64_t* Shape() const;
-
   /*!
-   * \brief Get the .
-   * \return The shape;
+   * \brief Get the number of bits.
+   * \return The number of bits;
    */
   uint8_t NumBits() const;
-
+  /*!
+   * \brief Get the dtype.
+   * \return The dtype;
+   */
+  DLDataType DType() const;
   /*!
    * \brief Create an empty NDArray with shared memory.
    * \param name The name of shared memory.
@@ -503,6 +506,16 @@ inline bool NDArray::IsPinned() const {
 int64_t* NDArray::Shape() const {
   CHECK(data_ != nullptr);
   return data_->dl_tensor.shape;
+}
+
+uint8_t NDArray::NumBits() const {
+  CHECK(data_ != nullptr);
+  return data_->dl_tensor.dtype.bits;
+}
+
+DLDataType NDArray::DType() const {
+  CHECK(data_ != nullptr);
+  return data_->dl_tensor.dtype;
 }
 
 inline int NDArray::use_count() const {
