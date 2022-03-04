@@ -7,13 +7,13 @@ ThreadPool<FastSamplerThread> global_threadpool{
 FastSamplerSession::FastSamplerSession(
     size_t num_threads,
     unsigned int max_items_in_queue,
-    FastSamplerConfig config_)
+    FastSamplerConfigRef config_)
     : config{std::move(config_)},
       // TODO: Why doesn't this compile...
       // threads{global_threadpool.get(num_threads)},
       items_in_queue{std::min(max_items_in_queue, items_in_queue.max())},
-      inputs{config.idx.NumElements() / config.batch_size + 1},
-      outputs{config.idx.NumElements() / config.batch_size + 1},
+      inputs{config->idx.NumElements() / config->batch_size + 1},
+      outputs{config->idx.NumElements() / config->batch_size + 1},
       iptok{inputs},
       octok{outputs} {
   TORCH_CHECK(
@@ -30,11 +30,11 @@ FastSamplerSession::FastSamplerSession(
     thread.slot->assign_session(*this);
   }
 
-  size_t const n = config.idx.NumElements();
+  size_t const n = config->idx.NumElements();
 
-  for (size_t i = 0; i < n; i += config.batch_size) {
-    auto const this_batch_size = std::min(n, i + config.batch_size) - i;
-    if (config.skip_nonfull_batch && (this_batch_size < config.batch_size)) {
+  for (size_t i = 0; i < n; i += config->batch_size) {
+    auto const this_batch_size = std::min(n, i + config->batch_size) - i;
+    if (config->skip_nonfull_batch && (this_batch_size < config->batch_size)) {
       continue;
     }
 
@@ -90,15 +90,28 @@ optional<PreparedSample> FastSamplerSession::blocking_get_batch() {
 }
 
 
+/* methods */
+
+DGL_REGISTER_GLOBAL("salient._CAPI_FSSessionCreate")
+.set_body([] (dgl::runtime::DGLArgs args, dgl::runtime::DGLRetValue* rv) {
+    size_t num_threads = static_cast<size_t>(args[0]);
+    // should be unsigned.. but should be fine
+    int max_items_in_queue = args[1];
+    FastSamplerConfigRef cfg = args[2];
+    auto fss = std::make_shared<FastSamplerSession>(num_threads, max_items_in_queue, cfg);
+    *rv = FastSamplerSessionRef(fss);
+});
+
 DGL_REGISTER_GLOBAL("salient._CAPI_FSSessionBlockingGetBatch")
 .set_body([] (dgl::runtime::DGLArgs args, dgl::runtime::DGLRetValue* rv) {
-    printf("entered salient._CAPI_FSSessionBlockingGetBatch\n");
     FastSamplerSessionRef fssr = args[0];
-    printf("make_shared\n");
     auto opsr = std::make_shared<OptionalPreparedSample>();
-    printf("blocking_get_batch\n");
     opsr->value = std::move(fssr->blocking_get_batch());
-    printf("assign rv\n");
     *rv = opsr;
-    printf("end\n");
+});
+
+DGL_REGISTER_GLOBAL("salient._CAPI_FSSessionGetNumTotalBatches")
+.set_body([] (dgl::runtime::DGLArgs args, dgl::runtime::DGLRetValue* rv) {
+    FastSamplerSessionRef fssr = args[0];
+    *rv = static_cast<int64_t>(fssr->get_num_total_batches());
 });

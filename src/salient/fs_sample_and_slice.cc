@@ -181,14 +181,14 @@ void fast_sampler_thread(FastSamplerSlot& slot) {
     auto const this_batch_size = pair.second - pair.first;
 
     auto const& config = slot.session->config;
-    const auto idx_data = config.idx.Ptr<int64_t>();
+    const auto idx_data = config->idx.Ptr<int64_t>();
     nvtxRangePushA("multilayer_sample");
     auto proto = multilayer_sample(
         {idx_data + pair.first, idx_data + pair.second},
-        config.sizes,
-        config.rowptr,
-        config.col,
-        config.pin_memory);
+        config->sizes,
+        config->rowptr,
+        config->col,
+        config->pin_memory);
     nvtxRangePop();
     auto const& n_id = proto.indices;
     nvtxRangePushA("slicing");
@@ -197,14 +197,14 @@ void fast_sampler_thread(FastSamplerSlot& slot) {
     // std::cout << n_id.sizes() << std::endl;
     // std::cout << torch::max(n_id) << std::endl;
     // std::cout << torch::min(n_id) << std::endl;
-    auto x_s = serial_index(config.x, n_id, config.pin_memory);
+    auto x_s = serial_index(config->x, n_id, config->pin_memory);
     optional<dgl::NDArray> y_s;
     // std::optional
     // if (config.y.has_value()) {
     // boost::optional
-    if (config.y->value) {
+    if (config->y->value) {
       // printf("Slicing y\n");
-      y_s = serial_index(*(config.y->value), n_id, this_batch_size, config.pin_memory);
+      y_s = serial_index(*(config->y->value), n_id, this_batch_size, config->pin_memory);
     }
     nvtxRangePop();
     /*

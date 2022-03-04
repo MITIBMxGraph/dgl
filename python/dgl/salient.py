@@ -69,14 +69,14 @@ class OptionalPreparedSample(ObjectBase):
 
 
 """
-User-facing classes.
+User-facing classes with C++ backend.
 """
 
 @register_object('salient.FastSamplerConfig')
 class FastSamplerConfig(ObjectBase):
     """ Configure the fast sampler. """
 
-    # an __init__ may not exactly work
+    #def __new__(cls, batch_size, x, y, rowptr, col, idx, sizes, skip_nonfull_batch, pin_memory):
     def create(batch_size, x, y, rowptr, col, idx, sizes, skip_nonfull_batch, pin_memory):
         return _CAPI_FSConfigCreate(batch_size, x, y, rowptr, col, idx, sizes, skip_nonfull_batch, pin_memory)
 
@@ -102,6 +102,7 @@ class FastSamplerConfig(ObjectBase):
 @register_object('salient.OptionalNDArray')
 class OptionalNDArray(ObjectBase):
 
+    #def __new__(cls, ndarray):
     def create(ndarray):
         return _CAPI_OptionalNDArrayCreate(ndarray)
 
@@ -112,25 +113,87 @@ class OptionalNDArray(ObjectBase):
     def ndarray(self):
         return _CAPI_OptionalNDArrayGetNDArray(self)
 
-"""
 
-class FastSamplerStats(NamedTuple):
-    total_blocked_dur: datetime.timedelta
-    total_blocked_occasions: int
+@register_object('salient.FastSamplerSession')
+class FastSamplerSession(ObjectBase):
+    """ Main Fast Sampler class. """
+
+    def create(num_threads, max_items_in_queue, cfg):
+        return _CAPI_FSSessionCreate(num_threads, max_items_in_queue, cfg)
+
+    @property
+    def num_total_batches(self):
+
+    def blocking_get_batch(self):
+        return _CAPI_FSSessionBlockingGetBatch(self)
+
+
+""" Class for working with returned batch. """
+
+
+class PreparedBatch(NamedTuple):
+    x: dgl.ndarray.NDArray
+    y: Optional[dgl.ndarray.NDArray]
+    blocks: List[DGLBlock]
+    idx_range: slice
 
     @classmethod
-    def from_session(cls, session: fast_sampler.Session):
-        return cls(total_blocked_dur=session.total_blocked_dur,
-                   total_blocked_occasions=session.total_blocked_occasions)
+    def from_fast_sampler(cls, batch):
+        (start, stop) = batch.range
+        return cls(
+            x=batch.x,
+            y=batch.y.squeeze() if batch.y is not None else None,
+            blocks=batch.blocks,
+            idx_range=slice(start, stop)
+        )
 
+    #def record_stream(self, stream):
+    #    if self.x is not None:
+    #        self.x.record_stream(stream)
+    #    if self.y is not None:
+    #        self.y.record_stream(stream)
+    #    # record stream for DGLBlock
+    #    """
+    #    for block in self.blocks:
+    #        block.int().record_stream(stream)
+    #    """
+
+    # TODO: reinstate after cleaned in DeviceTransferer
+    #def to(self, device, non_blocking=False):
+    #    # transfer blocks first
+    #    tmp_blocks=[block.int().to(device=device, non_blocking=False) for block in self.blocks] if self.blocks is not None else None
+    #    #torch.cuda.synchronize()
+    #    return PreparedBatch(
+    #        x=self.x.to(
+    #            device=device, non_blocking=non_blocking) if self.x is not None else None,
+    #        y=self.y.to(
+    #            device=device, non_blocking=non_blocking) if self.y is not None else None,
+    #        #blocks=[block.int().to(device=device, non_blocking=non_blocking)
+    #        #      for block in self.blocks],
+    #       # blocks=None,
+    #        blocks=tmp_blocks,
+    #        idx_range=self.idx_range
+    #    )
+
+    @property
+    def num_total_nodes(self):
+        return self.x.size(0)
+
+    @property
+    def batch_size(self):
+        return self.idx_range.stop - self.idx_range.start
+
+
+"""
+Fast sampler python classes.
+"""
 
 class FastSamplerIter(Iterator[PreparedBatch]):
-    session: fast_sampler.Session
+    session: FastSamplerSession
 
     def __init__(self, num_threads: int, max_items_in_queue: int, cfg: FastSamplerConfig):
-        ncfg = cfg.to_fast_sampler()
-        self.session = fast_sampler.Session(
-            num_threads, max_items_in_queue, ncfg)
+        self.session = FastSanplerSession.create(
+            num_threads, max_items_in_queue, cfg)
         assert self.session.num_total_batches == cfg.get_num_batches()
 
     def __next__(self):
@@ -144,15 +207,11 @@ class FastSamplerIter(Iterator[PreparedBatch]):
         return FastSamplerStats.from_session(self.session)
 
 
+
 class ABCNeighborSampler(Iterable[PreparedBatch], Sized):
     @property
     @abstractmethod
-    def idx(self) -> torch.Tensor:
-        ...
-
-    @idx.setter
-    @abstractmethod
-    def idx(self, idx: torch.Tensor) -> None:
+    def idx(self):
         ...
 
 
@@ -165,10 +224,6 @@ class FastSampler(ABCNeighborSampler):
     @property
     def idx(self):
         return self.cfg.idx
-
-    @idx.setter
-    def idx(self, idx: torch.Tensor) -> None:
-        self.cfg.idx = idx
 
     def __iter__(self):
         return FastSamplerIter(self.num_threads, self.max_items_in_queue, self.cfg)

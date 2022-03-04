@@ -20,7 +20,7 @@ class FastSamplerSession : public dgl::runtime::Object {
   FastSamplerSession(
       size_t num_threads,
       unsigned int max_items_in_queue,
-      FastSamplerConfig config_
+      FastSamplerConfigRef config_
   );
 
   ~FastSamplerSession() noexcept;
@@ -41,7 +41,7 @@ class FastSamplerSession : public dgl::runtime::Object {
     return num_total_batches;
   }
 
-  const FastSamplerConfig config;
+  const FastSamplerConfigRef config;
 
   std::atomic<size_t> num_inserted_batches{0};
 
