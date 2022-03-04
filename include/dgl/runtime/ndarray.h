@@ -503,21 +503,6 @@ inline bool NDArray::IsPinned() const {
   return data_->dl_tensor.ctx.device_type == kDLCPUPinned;
 }
 
-int64_t* NDArray::Shape() const {
-  CHECK(data_ != nullptr);
-  return data_->dl_tensor.shape;
-}
-
-uint8_t NDArray::NumBits() const {
-  CHECK(data_ != nullptr);
-  return data_->dl_tensor.dtype.bits;
-}
-
-DLDataType NDArray::DType() const {
-  CHECK(data_ != nullptr);
-  return data_->dl_tensor.dtype;
-}
-
 inline int NDArray::use_count() const {
   if (data_ == nullptr) return 0;
   return data_->ref_counter_.load(std::memory_order_relaxed);

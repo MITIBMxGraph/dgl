@@ -146,6 +146,21 @@ int64_t NDArray::NumElements() const {
   return size;
 }
 
+int64_t* NDArray::Shape() const {
+  CHECK(data_ != nullptr);
+  return data_->dl_tensor.shape;
+}
+
+uint8_t NDArray::NumBits() const {
+  CHECK(data_ != nullptr);
+  return data_->dl_tensor.dtype.bits;
+}
+
+DLDataType NDArray::DType() const {
+  CHECK(data_ != nullptr);
+  return data_->dl_tensor.dtype;
+}
+
 bool NDArray::IsContiguous() const {
   CHECK(data_ != nullptr);
   if (data_->dl_tensor.strides == nullptr)
