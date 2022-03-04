@@ -3,29 +3,33 @@
 
 
 #include "fs_common.hpp"
+#include "fs_types.hpp"
 
 
 class FastSamplerConfig : public dgl::runtime::Object {
   public:
+    /*
     FastSamplerConfig( 
       size_t batch_size,
       dgl::NDArray x,
-      optional<dgl::NDArray> y,
+      OptionalNDArrayRef y,
       dgl::NDArray rowptr,
       dgl::NDArray col,
       dgl::NDArray idx,
-      std::vector<int64_t> sizes,
+      dgl::NDArray sizes,
       bool skip_nonfull_batch,
       bool pin_memory
     );
+    */
+    FastSamplerConfig(){}
 
     size_t batch_size;
     dgl::NDArray x;
-    optional<dgl::NDArray> y;
+    OptionalNDArrayRef y;
     dgl::NDArray rowptr;
     dgl::NDArray col;
     dgl::NDArray idx;
-    std::vector<int64_t> sizes;
+    dgl::NDArray sizes;
     bool skip_nonfull_batch;
     bool pin_memory;
 

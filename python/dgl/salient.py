@@ -99,6 +99,19 @@ class FastSamplerConfig(ObjectBase):
         return num_batches
 
 
+@register_object('salient.OptionalNDArray')
+class OptionalNDArray(ObjectBase):
+
+    def __init__(self, ndarray):
+        _CAPI_OptionalNDArraySetNDArray(self, ndarray)
+
+    def __bool__(self):
+        return True if _CAPI_OptionalNDArrayHasValue(self) else False
+
+    @property
+    def ndarray(self):
+        return _CAPI_OptionalNDArrayGetNDArray(self)
+
 """
 
 class FastSamplerStats(NamedTuple):

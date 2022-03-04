@@ -2,7 +2,7 @@
 
 ProtoSample multilayer_sample(
     std::vector<int64_t> n_ids,
-    std::vector<int64_t> const& sizes,
+    dgl::NDArray sizes,
     dgl::NDArray rowptr,
     dgl::NDArray col,
     bool pin_memory) {
@@ -10,12 +10,13 @@ ProtoSample multilayer_sample(
 
 
   auto blocks = std::make_shared<HeteroGraphArray>();
-  blocks->graphs.reserve(sizes.size());
+  blocks->graphs.reserve(sizes.NumElements());
 
   constexpr DLContext ctx = DLContext{kDLCPU, 0};
   const uint8_t nbits = 64;
 
-  for (auto size : sizes) {
+  for (int i=0; i < sizes.NumElements(); i++) {
+    auto size = sizes.Ptr<int64_t>()[i];
     auto const subset_size = n_ids.size();
     //dgl::NDArray out_rowptr, out_col, out_e_id;
     dgl::IdArray out_rowptr, out_col, out_e_id;
@@ -69,7 +70,7 @@ ProtoSample multilayer_sample(
 
 ProtoSample multilayer_sample(
     dgl::NDArray idx,
-    std::vector<int64_t> const& sizes,
+    dgl::NDArray sizes,
     dgl::NDArray rowptr,
     dgl::NDArray col,
     bool pin_memory) {
@@ -201,9 +202,9 @@ void fast_sampler_thread(FastSamplerSlot& slot) {
     // std::optional
     // if (config.y.has_value()) {
     // boost::optional
-    if (config.y) {
+    if (config.y->value) {
       // printf("Slicing y\n");
-      y_s = serial_index(*config.y, n_id, this_batch_size, config.pin_memory);
+      y_s = serial_index(*(config.y->value), n_id, this_batch_size, config.pin_memory);
     }
     nvtxRangePop();
     /*
