@@ -229,6 +229,18 @@ class NDArray {
                                DLDataType dtype,
                                DLContext ctx);
   /*!
+   * \brief Get the shape of the array.
+   * \return The shape;
+   */
+  int64_t* Shape() const;
+
+  /*!
+   * \brief Get the .
+   * \return The shape;
+   */
+  uint8_t NumBits() const;
+
+  /*!
    * \brief Create an empty NDArray with shared memory.
    * \param name The name of shared memory.
    * \param shape The shape of the new array.
@@ -486,6 +498,11 @@ inline void NDArray::UnpinMemory_() {
 inline bool NDArray::IsPinned() const {
   CHECK(data_ != nullptr);
   return data_->dl_tensor.ctx.device_type == kDLCPUPinned;
+}
+
+int64_t* NDArray::Shape() const {
+  CHECK(data_ != nullptr);
+  return data_->dl_tensor.shape;
 }
 
 inline int NDArray::use_count() const {

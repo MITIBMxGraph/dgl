@@ -11,44 +11,44 @@
 ProtoSample multilayer_sample(
     std::vector<int64_t> n_ids,
     std::vector<int64_t> const& sizes,
-    torch::Tensor rowptr,
-    torch::Tensor col,
+    dgl::NDArray rowptr,
+    dgl::NDArray col,
     bool pin_memory = false
 ); 
 
 ProtoSample multilayer_sample(
-    torch::Tensor idx,
+    dgl::NDArray idx,
     std::vector<int64_t> const& sizes,
-    torch::Tensor rowptr,
-    torch::Tensor col,
+    dgl::NDArray rowptr,
+    dgl::NDArray col,
     bool pin_memory = false
 );
 
 template <typename scalar_t>
 dgl::NDArray serial_index_impl(
-    torch::Tensor const in,
-    torch::Tensor const idx,
+    dgl::NDArray const in,
+    dgl::NDArray const idx,
     int64_t const n,
     bool const pin_memory = false
 );
 
 template <typename scalar_t>
 dgl::NDArray serial_index_impl(
-    torch::Tensor const in,
-    torch::Tensor const idx,
+    dgl::NDArray const in,
+    dgl::NDArray const idx,
     bool const pin_memory = false
 );
 
 dgl::NDArray serial_index(
-    torch::Tensor const in,
-    torch::Tensor const idx,
+    dgl::NDArray const in,
+    dgl::NDArray const idx,
     int64_t const n,
     bool const pin_memory = false
 );
 
 dgl::NDArray serial_index(
-    torch::Tensor const in,
-    torch::Tensor const idx,
+    dgl::NDArray const in,
+    dgl::NDArray const idx,
     bool const pin_memory = false
 );
 

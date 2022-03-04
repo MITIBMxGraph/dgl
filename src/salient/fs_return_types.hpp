@@ -29,7 +29,7 @@ DGL_DEFINE_OBJECT_REF(HeteroGraphArrayRef, HeteroGraphArray);
  * 2. array of message flow graphs
  */
 typedef struct ProtoSample {
-  torch::Tensor indices;
+  dgl::NDArray indices;
   HeteroGraphArrayRef mfgs;
 };
 

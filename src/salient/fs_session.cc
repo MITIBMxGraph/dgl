@@ -12,8 +12,8 @@ FastSamplerSession::FastSamplerSession(
       // TODO: Why doesn't this compile...
       // threads{global_threadpool.get(num_threads)},
       items_in_queue{std::min(max_items_in_queue, items_in_queue.max())},
-      inputs{config.idx.numel() / config.batch_size + 1},
-      outputs{config.idx.numel() / config.batch_size + 1},
+      inputs{config.idx.NumElements() / config.batch_size + 1},
+      outputs{config.idx.NumElements() / config.batch_size + 1},
       iptok{inputs},
       octok{outputs} {
   TORCH_CHECK(
@@ -30,7 +30,7 @@ FastSamplerSession::FastSamplerSession(
     thread.slot->assign_session(*this);
   }
 
-  size_t const n = config.idx.numel();
+  size_t const n = config.idx.NumElements();
 
   for (size_t i = 0; i < n; i += config.batch_size) {
     auto const this_batch_size = std::min(n, i + config.batch_size) - i;

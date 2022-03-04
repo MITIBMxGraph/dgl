@@ -22,21 +22,25 @@ using SingleSample = std::
 
 // Returns `rowptr`, `col`, `n_id`, `e_id`
 inline SingleSample sample_adj(
-    torch::Tensor rowptr,
-    torch::Tensor col,
+    dgl::NDArray rowptr,
+    dgl::NDArray col,
     std::vector<int64_t> n_ids,
     phmap::flat_hash_map<int64_t, int64_t>& n_id_map,
     int64_t num_neighbors,
     bool replace,
     bool pin_memory = false) {
+
+  constexpr DLContext ctx = DLContext{kDLCPU, 0};
+  const uint8_t nbits = 64; // 64 bit
+
   const auto idx_size = n_ids.size();
 
-  auto rowptr_data = rowptr.data_ptr<int64_t>();
-  const auto col_data = col.data_ptr<int64_t>();
+  auto rowptr_data = rowptr.Ptr<int64_t>();
+  const auto col_data = col.Ptr<int64_t>();
 
   // intermediate for transpose
-  auto tmp_rowptr = torch::empty(idx_size + 1, rowptr.options().pinned_memory(false));
-  const auto tmp_rowptr_data = tmp_rowptr.data_ptr<int64_t>();
+  auto tmp_rowptr = dgl::aten::NewIdArray(idx_size+1, ctx, nbits);
+  const auto tmp_rowptr_data = tmp_rowptr.Ptr<int64_t>();
   tmp_rowptr_data[0] = 0;
   // adjacency vector of (col, e_id)
   std::vector<std::vector<std::tuple<int64_t, int64_t>>> cols(idx_size);
@@ -113,10 +117,10 @@ inline SingleSample sample_adj(
   const auto E = tmp_rowptr_data[idx_size];
 
   // intermediate variables for transpose
-  auto tmp_col = torch::empty(E, col.options().pinned_memory(false));
-  const auto tmp_col_data = tmp_col.data_ptr<int64_t>();
-  auto tmp_e_id = torch::empty(E, col.options().pinned_memory(false));
-  const auto tmp_e_id_data = tmp_e_id.data_ptr<int64_t>();
+  auto tmp_col = dgl::aten::NewIdArray(E, ctx, nbits);
+  const auto tmp_col_data = tmp_col.Ptr<int64_t>();
+  auto tmp_e_id = dgl::aten::NewIdArray(E, ctx, nbits);
+  const auto tmp_e_id_data = tmp_e_id.Ptr<int64_t>();
 
   {
     size_t i = 0;
@@ -138,21 +142,6 @@ inline SingleSample sample_adj(
 
   // output
   const auto n_col = n_id_map.size();
-  // printf("(should be on stack) n_col: %p\n", &n_col);
-  /*
-  auto out_rowptr = torch::empty(n_col + 1, rowptr.options().pinned_memory(pin_memory));
-  const auto out_rowptr_data = out_rowptr.data_ptr<int64_t>();
-  // attempt with contiguous memory
-  // const auto out_rowptr_data = out_rowptr.contiguous().data_ptr<int64_t>();
-  auto out_col = torch::empty(E, col.options().pinned_memory(pin_memory));
-  const auto out_col_data = out_col.data_ptr<int64_t>();
-  auto out_e_id = torch::empty(E, col.options().pinned_memory(pin_memory));
-  const auto out_e_id_data = out_e_id.data_ptr<int64_t>();
-  */
-  // using dgl
-  constexpr DLContext ctx = DLContext{kDLCPU, 0};
-  // 64 bit
-  const uint8_t nbits = 64;
   dgl::IdArray out_rowptr = dgl::aten::NewIdArray(n_col+1, ctx, nbits);
   const auto out_rowptr_data = out_rowptr.Ptr<int64_t>();
   dgl::IdArray out_col = dgl::aten::NewIdArray(E, ctx, nbits);
@@ -203,8 +192,8 @@ inline SingleSample sample_adj(
 }
 
 inline SingleSample sample_adj(
-    torch::Tensor rowptr,
-    torch::Tensor col,
+    dgl::NDArray rowptr,
+    dgl::NDArray col,
     std::vector<int64_t> n_ids,
     int64_t num_neighbors,
     bool replace,
@@ -220,28 +209,28 @@ inline SingleSample sample_adj(
       pin_memory);
 }
 
-//inline std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>
 // not tested after switching to dgl
-inline std::tuple<dgl::IdArray, dgl::IdArray, torch::Tensor, dgl::IdArray>
+inline std::tuple<dgl::IdArray, dgl::IdArray, dgl::NDArray, dgl::IdArray>
 sample_adj(
-    torch::Tensor rowptr,
-    torch::Tensor col,
-    torch::Tensor idx,
+    dgl::NDArray rowptr,
+    dgl::NDArray col,
+    dgl::NDArray idx,
     int64_t num_neighbors,
     bool replace,
     bool pin_memory = false) {
-  const auto idx_data = idx.data_ptr<int64_t>();
+  const auto idx_data = idx.Ptr<int64_t>();
   auto res = sample_adj(
       std::move(rowptr),
       std::move(col),
-      {idx_data, idx_data + idx.numel()},
+      {idx_data, idx_data + idx.NumElements()},
       num_neighbors,
       replace,
       pin_memory);
   auto& n_ids = std::get<2>(res);
+  const uint8_t nbits = 64;
   return std::make_tuple(
       std::move(std::get<0>(res)),
       std::move(std::get<1>(res)),
-      vector_to_tensor(n_ids),
+      dgl::aten::VecToIdArray(n_ids, nbits),
       std::move(std::get<3>(res)));
 }

@@ -3,8 +3,8 @@
 ProtoSample multilayer_sample(
     std::vector<int64_t> n_ids,
     std::vector<int64_t> const& sizes,
-    torch::Tensor rowptr,
-    torch::Tensor col,
+    dgl::NDArray rowptr,
+    dgl::NDArray col,
     bool pin_memory) {
   auto n_id_map = get_initial_sample_adj_hash_map(n_ids);
 
@@ -12,9 +12,12 @@ ProtoSample multilayer_sample(
   auto blocks = std::make_shared<HeteroGraphArray>();
   blocks->graphs.reserve(sizes.size());
 
+  constexpr DLContext ctx = DLContext{kDLCPU, 0};
+  const uint8_t nbits = 64;
+
   for (auto size : sizes) {
     auto const subset_size = n_ids.size();
-    //torch::Tensor out_rowptr, out_col, out_e_id;
+    //dgl::NDArray out_rowptr, out_col, out_e_id;
     dgl::IdArray out_rowptr, out_col, out_e_id;
 
     // sample_adj outputs a relation graph
@@ -33,8 +36,6 @@ ProtoSample multilayer_sample(
     auto rel_graph = dgl::HeteroGraphRef(hgptr);
 
     // create metagraph
-    constexpr DLContext ctx = DLContext{kDLCPU, 0};
-    const uint8_t nbits = 64;
     // currently suming one type of relation graph, so the meta graph has only two nodes
     const int64_t num_nodes = 2;
     // src_ids contains node 0 of metagraph
@@ -60,21 +61,21 @@ ProtoSample multilayer_sample(
 
   std::reverse(blocks->graphs.begin(), blocks->graphs.end());
   ProtoSample rv;
-  rv.indices = vector_to_tensor(n_ids);
+  rv.indices = dgl::aten::VecToIdArray(n_ids, nbits);
   rv.mfgs = HeteroGraphArrayRef(blocks);
   return rv;
 }
 
 
 ProtoSample multilayer_sample(
-    torch::Tensor idx,
+    dgl::NDArray idx,
     std::vector<int64_t> const& sizes,
-    torch::Tensor rowptr,
-    torch::Tensor col,
+    dgl::NDArray rowptr,
+    dgl::NDArray col,
     bool pin_memory) {
-  const auto idx_data = idx.data_ptr<int64_t>();
+  const auto idx_data = idx.Ptr<int64_t>();
   return multilayer_sample(
-      {idx_data, idx_data + idx.numel()},
+      {idx_data, idx_data + idx.NumElements()},
       sizes,
       std::move(rowptr),
       std::move(col),
@@ -84,18 +85,20 @@ ProtoSample multilayer_sample(
 
 template <typename scalar_t>
 dgl::NDArray serial_index_impl(
-    torch::Tensor const in,
-    torch::Tensor const idx,
+    dgl::NDArray const in,
+    dgl::NDArray const idx,
     int64_t const n,
     bool const pin_memory) {
-  const auto f = in.sizes().back();
-  TORCH_CHECK(
-      (in.strides().size() == 2 && in.strides().back() == 1) ||
-          (in.sizes().back() == 1),
-      "input must be 2D row-major tensor");
+  // WARNING: assuming two-dimenstional below
+  const auto f = in.Shape()[1];
+  // TODO: re-add this check for dgl
+  // TORCH_CHECK(
+  //     (in.strides().size() == 2 && in.strides().back() == 1) ||
+  //         (in.sizes().back() == 1),
+  //     "input must be 2D row-major tensor");
 
-  auto inptr = in.data_ptr<scalar_t>();
-  auto idxptr = idx.data_ptr<int64_t>();
+  auto inptr = in.Ptr<scalar_t>();
+  auto idxptr = idx.Ptr<int64_t>();
 
   constexpr DLContext ctx = DLContext{kDLCPU, 0};
   const uint8_t nbits = sizeof(scalar_t) * 8;
@@ -103,7 +106,7 @@ dgl::NDArray serial_index_impl(
   const auto outptr = out.Ptr<scalar_t>();
 
 
-  for (int64_t i = 0; i < std::min(idx.numel(), n); ++i) {
+  for (int64_t i = 0; i < std::min(idx.NumElements(), n); ++i) {
     const auto row = idxptr[i];
     std::copy_n(inptr + row * f, f, outptr + i * f);
   }
@@ -113,26 +116,30 @@ dgl::NDArray serial_index_impl(
 
 template <typename scalar_t>
 dgl::NDArray serial_index_impl(
-    torch::Tensor const in,
-    torch::Tensor const idx,
+    dgl::NDArray const in,
+    dgl::NDArray const idx,
     bool const pin_memory) {
-  return serial_index_impl<scalar_t>(in, idx, idx.numel(), pin_memory);
+  return serial_index_impl<scalar_t>(in, idx, idx.NumElements(), pin_memory);
 }
 
 dgl::NDArray serial_index(
-    torch::Tensor const in,
-    torch::Tensor const idx,
+    dgl::NDArray const in,
+    dgl::NDArray const idx,
     int64_t const n,
     bool const pin_memory) {
+  // Quick type hack instead of redefining macro for NDArray
+  // Assumes using pytorch backend.
   return AT_DISPATCH_ALL_TYPES_AND(at::ScalarType::Half, in.scalar_type(), "serial_index", [&] {
     return serial_index_impl<scalar_t>(in, idx, n, pin_memory);
   });
 }
 
 dgl::NDArray serial_index(
-    torch::Tensor const in,
-    torch::Tensor const idx,
+    dgl::NDArray const in,
+    dgl::NDArray const idx,
     bool const pin_memory) {
+  // Quick type hack instead of redefining macro for NDArray
+  // Assumes using pytorch backend.
   return AT_DISPATCH_ALL_TYPES_AND(at::ScalarType::Half, in.scalar_type(), "serial_index", [&] {
     return serial_index_impl<scalar_t>(in, idx, pin_memory);
   });
@@ -173,7 +180,7 @@ void fast_sampler_thread(FastSamplerSlot& slot) {
     auto const this_batch_size = pair.second - pair.first;
 
     auto const& config = slot.session->config;
-    const auto idx_data = config.idx.data_ptr<int64_t>();
+    const auto idx_data = config.idx.Ptr<int64_t>();
     nvtxRangePushA("multilayer_sample");
     auto proto = multilayer_sample(
         {idx_data + pair.first, idx_data + pair.second},

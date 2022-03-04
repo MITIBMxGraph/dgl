@@ -9,22 +9,22 @@ class FastSamplerConfig : public dgl::runtime::Object {
   public:
     FastSamplerConfig( 
       size_t batch_size,
-      torch::Tensor x,
-      optional<torch::Tensor> y,
-      torch::Tensor rowptr,
-      torch::Tensor col,
-      torch::Tensor idx,
+      dgl::NDArray x,
+      optional<dgl::NDArray> y,
+      dgl::NDArray rowptr,
+      dgl::NDArray col,
+      dgl::NDArray idx,
       std::vector<int64_t> sizes,
       bool skip_nonfull_batch,
       bool pin_memory
     );
 
     size_t batch_size;
-    torch::Tensor x;
-    optional<torch::Tensor> y;
-    torch::Tensor rowptr;
-    torch::Tensor col;
-    torch::Tensor idx;
+    dgl::NDArray x;
+    optional<dgl::NDArray> y;
+    dgl::NDArray rowptr;
+    dgl::NDArray col;
+    dgl::NDArray idx;
     std::vector<int64_t> sizes;
     bool skip_nonfull_batch;
     bool pin_memory;

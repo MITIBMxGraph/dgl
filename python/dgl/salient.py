@@ -76,6 +76,10 @@ User-facing classes.
 class FastSamplerConfig(ObjectBase):
     """ Configure the fast sampler. """
 
+    # an __init__ may not exactly work
+    def create():
+        return _CAPI_FSConfigCreate()
+
     @property
     def batch_size(self):
         return _CAPI_FSConfigGetBatchSize(self)
