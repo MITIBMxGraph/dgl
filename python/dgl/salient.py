@@ -77,8 +77,8 @@ class FastSamplerConfig(ObjectBase):
     """ Configure the fast sampler. """
 
     # an __init__ may not exactly work
-    def create():
-        return _CAPI_FSConfigCreate()
+    def create(batch_size, x, y, rowptr, col, idx, sizes, skip_nonfull_batch, pin_memory):
+        return _CAPI_FSConfigCreate(batch_size, x, y, rowptr, col, idx, sizes, skip_nonfull_batch, pin_memory)
 
     @property
     def batch_size(self):
@@ -102,8 +102,8 @@ class FastSamplerConfig(ObjectBase):
 @register_object('salient.OptionalNDArray')
 class OptionalNDArray(ObjectBase):
 
-    def __init__(self, ndarray):
-        _CAPI_OptionalNDArraySetNDArray(self, ndarray)
+    def create(ndarray):
+        return _CAPI_OptionalNDArrayCreate(ndarray)
 
     def __bool__(self):
         return True if _CAPI_OptionalNDArrayHasValue(self) else False
